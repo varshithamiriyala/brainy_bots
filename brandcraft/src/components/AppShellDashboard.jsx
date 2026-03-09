@@ -1,903 +1,512 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "./Icon";
 import { useLanguage } from "../hooks/useLanguage";
 
-// Google Fonts
-const fontLink = document.createElement('link');
-fontLink.href = 'https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700&display=swap';
-fontLink.rel = 'stylesheet';
-document.head.appendChild(fontLink);
+// ── Scroll Reveal: makes .reveal elements visible when they enter viewport ──
+function useScrollReveal() {
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("visible"); }),
+      { threshold: 0.08, rootMargin: "0px 0px -30px 0px" }
+    );
+    // Small delay so DOM is ready
+    const t = setTimeout(() => {
+      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    }, 100);
+    return () => { clearTimeout(t); observer.disconnect(); };
+  }, []);
+}
 
-// ─── App Shell ─────────────────────────────────────────────────────────────────
+// ── Mesh blob background for app shell ──
+function MeshLayer({ variant = "light" }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+      background: variant === "dark"
+        ? "radial-gradient(ellipse 80% 60% at 20% 30%, rgba(124,77,255,0.07) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 20%, rgba(240,80,168,0.05) 0%, transparent 55%), radial-gradient(ellipse 70% 60% at 60% 90%, rgba(0,201,180,0.04) 0%, transparent 55%)"
+        : "radial-gradient(ellipse 70% 55% at 10% 20%, rgba(124,77,255,0.06) 0%, transparent 60%), radial-gradient(ellipse 55% 45% at 90% 15%, rgba(240,80,168,0.05) 0%, transparent 50%)",
+    }} />
+  );
+}
+
+// ── Skeleton Card ──
+export function SkeletonCard({ lines = 3 }) {
+  return (
+    <div className="card" style={{ animation: "cardIn 0.4s var(--spring)" }}>
+      <div className="skeleton skeleton-title" style={{ marginBottom: 16, width: "55%" }} />
+      {Array.from({ length: lines }).map((_, i) => (
+        <div key={i} className="skeleton skeleton-text" style={{ marginBottom: 10, width: i === lines - 1 ? "65%" : "100%", animationDelay: `${i * 0.08}s` }} />
+      ))}
+    </div>
+  );
+}
+
+// ── App Shell ──
 export function AppShell({ page, onNav, user, children }) {
   const { language, setLanguage } = useLanguage();
   const [langOpen, setLangOpen] = useState(false);
-  const [chatTooltip, setChatTooltip] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [cmdTip, setCmdTip] = useState(false);
 
   const langs = [
-    { name: "English", flag: "🇺🇸" }, { name: "Spanish", flag: "🇪🇸" },
-    { name: "French", flag: "🇫🇷" }, { name: "German", flag: "🇩🇪" },
-    { name: "Japanese", flag: "🇯🇵" }, { name: "Arabic", flag: "🇸🇦" },
-    { name: "Hindi", flag: "🇮🇳" }, { name: "Portuguese", flag: "🇧🇷" },
-    { name: "Chinese", flag: "🇨🇳" }, { name: "Italian", flag: "🇮🇹" },
-    { name: "Korean", flag: "🇰🇷" },
+    { name:"English", flag:"🇺🇸" }, { name:"Spanish", flag:"🇪🇸" },
+    { name:"French", flag:"🇫🇷" }, { name:"German", flag:"🇩🇪" },
+    { name:"Japanese", flag:"🇯🇵" }, { name:"Arabic", flag:"🇸🇦" },
+    { name:"Hindi", flag:"🇮🇳" }, { name:"Portuguese", flag:"🇧🇷" },
+    { name:"Chinese", flag:"🇨🇳" }, { name:"Italian", flag:"🇮🇹" },
+    { name:"Korean", flag:"🇰🇷" },
   ];
-
   const currentLang = langs.find(l => l.name === language) || langs[0];
 
+  // Simulate page load skeleton
+  useEffect(() => {
+    setIsLoading(true);
+    const t = setTimeout(() => setIsLoading(false), 580);
+    return () => clearTimeout(t);
+  }, [page]);
+
   const links = [
-    { id: "dashboard", label: "Dashboard", icon: "dashboard", emoji: "🏠" },
-    { id: "brand-identity", label: "Brand Identity", icon: "brand", emoji: "🎨" },
-    { id: "content-copy", label: "Content & Copy", icon: "content", emoji: "✍️" },
-    { id: "voice-style", label: "Voice & Style", icon: "voice", emoji: "🎙️" },
+    { id:"dashboard",      label:"Dashboard",      emoji:"🏠" },
+    { id:"brand-identity", label:"Brand Identity", emoji:"🎨" },
+    { id:"content-copy",   label:"Content & Copy", emoji:"✍️" },
+    { id:"voice-style",    label:"Voice & Style",  emoji:"🎙️" },
   ];
 
   return (
-    <div style={{ display: "flex", background: "#FAF6FF", minHeight: "100vh" }}>
-      {/* Sidebar */}
-      <div style={{
-        width: 280,
-        background: "#FFFFFF",
-        borderRight: "1px solid rgba(124,77,255,0.12)",
-        display: "flex",
-        flexDirection: "column",
-        backgroundImage: "radial-gradient(circle, rgba(124,77,255,0.03) 1px, transparent 1px)",
-        backgroundSize: "20px 20px"
-      }}>
-        <div style={{ padding: "32px 24px", marginBottom: 32 }}>
-          <div style={{
-            fontFamily: "Fredoka One",
-            fontSize: 24,
-            fontWeight: 400,
-            color: "#7C4DFF",
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}>
-            BrandCraft ✨
+    <div style={{ display:"flex", minHeight:"100vh", background:"var(--bg)", position:"relative" }}>
+      <MeshLayer />
+
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar" style={{ zIndex: 50 }}>
+        {/* Logo */}
+        <div style={{ padding:"28px 24px 20px", borderBottom:"1.5px solid var(--border)" }}>
+          <div
+            onClick={() => onNav("landing")}
+            style={{ fontFamily:"Fredoka One", fontSize:22, color:"var(--violet)", cursor:"pointer", display:"flex", alignItems:"center", gap:8, transition:"opacity 0.2s" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.75"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            ✨ BrandCraft
           </div>
+          <div style={{ fontSize:11, color:"var(--text3)", fontWeight:600, marginTop:4, letterSpacing:"0.5px" }}>Brand Story Studio</div>
         </div>
 
-        <div style={{ flex: 1, padding: "0 16px" }}>
-          {links.map(l => (
+        {/* Nav links */}
+        <nav style={{ flex:1, padding:"16px 0" }}>
+          {links.map((l, i) => (
             <div
               key={l.id}
+              className={`sidebar-link ${page === l.id ? "active" : ""}`}
               onClick={() => onNav(l.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "14px 16px",
-                marginBottom: 4,
-                borderRadius: "12px 0 0 12px",
-                cursor: "pointer",
-                transition: "all 0.25s",
-                fontFamily: "Nunito",
-                fontSize: 14,
-                fontWeight: 600,
-                color: page === l.id ? "#2D1B69" : "#6B5B8A",
-                background: page === l.id ? "rgba(124,77,255,0.08)" : "transparent",
-                borderLeft: page === l.id ? "4px solid #7C4DFF" : "4px solid transparent",
-                position: "relative"
-              }}
-              onMouseEnter={e => {
-                if (page !== l.id) {
-                  e.currentTarget.style.background = "rgba(124,77,255,0.04)";
-                  e.currentTarget.style.transform = "translateX(2px)";
-                }
-              }}
-              onMouseLeave={e => {
-                if (page !== l.id) {
-                  e.currentTarget.style.background = "transparent";
-                  e.currentTarget.style.transform = "translateX(0)";
-                }
-              }}
+              style={{ animationDelay:`${i * 0.05}s`, animation:"fadeSlideUp 0.4s var(--spring) both" }}
             >
-              <span style={{ fontSize: 16 }}>{l.emoji}</span>
+              <span style={{ fontSize:17, transition:"transform 0.2s var(--spring)", transform: page === l.id ? "scale(1.15)" : "scale(1)" }}>{l.emoji}</span>
               <span>{l.label}</span>
+              {page === l.id && (
+                <div style={{ marginLeft:"auto", width:7, height:7, borderRadius:"50%", background:"var(--violet)", boxShadow:"0 0 8px var(--violet-glow)", animation:"pulseBeat 2s infinite" }} />
+              )}
             </div>
           ))}
-        </div>
+        </nav>
 
-        <div style={{ marginTop: "auto", padding: "24px 16px", borderTop: "1px solid rgba(124,77,255,0.12)" }}>
-          {/* Language Selector */}
-          <div style={{ marginBottom: 20, position: "relative" }}>
+        {/* Bottom controls */}
+        <div style={{ padding:"16px", borderTop:"1.5px solid var(--border)", display:"flex", flexDirection:"column", gap:10 }}>
+          {/* ⌘K tip */}
+          <div
+            style={{
+              display:"flex", alignItems:"center", gap:8,
+              padding:"9px 12px", borderRadius:12,
+              background:"rgba(124,77,255,0.05)",
+              border:"1px solid var(--border)",
+              fontSize:12, color:"var(--text3)", fontWeight:600, cursor:"default",
+            }}
+          >
+            <span>⌘K</span>
+            <span style={{ flex:1 }}>Command palette</span>
+            <kbd style={{ background:"rgba(124,77,255,0.08)", border:"1px solid var(--border)", borderRadius:5, padding:"1px 5px", fontSize:10, color:"var(--violet)", fontWeight:800 }}>K</kbd>
+          </div>
+
+          {/* Language picker */}
+          <div style={{ position:"relative" }}>
             <div
               onClick={() => setLangOpen(!langOpen)}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 14px",
-                background: "#FFFFFF",
-                border: "1px solid rgba(124,77,255,0.12)",
-                borderRadius: 12,
-                cursor: "pointer",
-                fontSize: 13,
-                fontFamily: "Nunito",
-                fontWeight: 500,
-                color: "#2D1B69",
-                transition: "all 0.25s",
-                boxShadow: "0 2px 8px rgba(124,77,255,0.08)"
+                display:"flex", alignItems:"center", gap:8,
+                padding:"10px 13px", borderRadius:12, cursor:"pointer",
+                background:"rgba(255,252,255,0.8)", border:"1.5px solid var(--border)",
+                fontSize:13, fontWeight:600, color:"var(--text)",
+                transition:"all 0.2s var(--spring)",
+                boxShadow:"var(--shadow-xs)",
               }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 12px rgba(124,77,255,0.15)"}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(124,77,255,0.08)"}
+              onMouseEnter={e => { e.currentTarget.style.borderColor="var(--violet)"; e.currentTarget.style.boxShadow="var(--shadow-sm)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor="var(--border)"; e.currentTarget.style.boxShadow="var(--shadow-xs)"; }}
             >
-              <span style={{ fontSize: 16 }}>{currentLang.flag}</span>
-              <span style={{ flex: 1 }}>{language}</span>
-              <span style={{ fontSize: 12, color: "#6B5B8A", transition: "transform 0.25s" }}
-                    className={langOpen ? "rotate-180" : ""}>▼</span>
+              <span style={{ fontSize:15 }}>{currentLang.flag}</span>
+              <span style={{ flex:1 }}>{language}</span>
+              <span style={{ fontSize:10, transition:"transform 0.2s", transform: langOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
             </div>
-
             {langOpen && (
               <div style={{
-                position: "absolute",
-                bottom: "100%",
-                left: 0,
-                right: 0,
-                marginBottom: 8,
-                background: "#FFFFFF",
-                border: "1px solid rgba(124,77,255,0.12)",
-                borderRadius: 12,
-                zIndex: 1000,
-                boxShadow: "0 8px 24px rgba(124,77,255,0.15)",
-                maxHeight: 200,
-                overflowY: "auto"
+                position:"absolute", bottom:"100%", left:0, right:0, marginBottom:6,
+                background:"rgba(255,253,255,0.97)", border:"1.5px solid var(--border)",
+                borderRadius:14, zIndex:200,
+                boxShadow:"var(--shadow-lg)",
+                maxHeight:200, overflowY:"auto",
+                animation:"panelIn 0.22s var(--spring)",
+                backdropFilter:"blur(20px)",
               }}>
                 {langs.map(l => (
                   <div
                     key={l.name}
-                    onClick={() => {
-                      setLanguage(l.name);
-                      setLangOpen(false);
-                    }}
+                    onClick={() => { setLanguage(l.name); setLangOpen(false); }}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "10px 14px",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      background: language === l.name ? "rgba(124,77,255,0.08)" : "transparent",
-                      color: language === l.name ? "#7C4DFF" : "#2D1B69",
-                      fontWeight: language === l.name ? 600 : 500,
-                      fontFamily: "Nunito",
-                      fontSize: 13,
-                      borderBottom: "1px solid rgba(124,77,255,0.06)"
+                      display:"flex", alignItems:"center", gap:8, padding:"9px 14px", cursor:"pointer",
+                      fontSize:13, fontWeight:600, fontFamily:"Nunito",
+                      color: language===l.name ? "var(--violet)" : "var(--text)",
+                      background: language===l.name ? "var(--violet-soft)" : "transparent",
+                      transition:"all 0.15s",
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = "rgba(124,77,255,0.04)"}
-                    onMouseLeave={e => e.currentTarget.style.background = language === l.name ? "rgba(124,77,255,0.08)" : "transparent"}
+                    onMouseEnter={e => { if(language!==l.name) e.currentTarget.style.background="rgba(124,77,255,0.04)"; }}
+                    onMouseLeave={e => { if(language!==l.name) e.currentTarget.style.background="transparent"; }}
                   >
-                    <span style={{ fontSize: 14 }}>{l.flag}</span>
+                    <span style={{ fontSize:14 }}>{l.flag}</span>
                     <span>{l.name}</span>
+                    {language===l.name && <span style={{ marginLeft:"auto", color:"var(--violet)", fontSize:12 }}>✓</span>}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* User Avatar Area */}
+          {/* User */}
           <div
             onClick={() => onNav("settings")}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              cursor: "pointer",
-              padding: "12px",
-              borderRadius: 12,
-              transition: "all 0.25s",
-              background: "rgba(124,77,255,0.02)"
+              display:"flex", alignItems:"center", gap:10, padding:"10px 12px",
+              borderRadius:14, cursor:"pointer", transition:"all 0.22s var(--spring)",
             }}
-            onMouseEnter={e => e.currentTarget.style.background = "rgba(124,77,255,0.06)"}
-            onMouseLeave={e => e.currentTarget.style.background = "rgba(124,77,255,0.02)"}
+            onMouseEnter={e => { e.currentTarget.style.background="var(--violet-soft)"; e.currentTarget.style.transform="translateX(2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background="transparent"; e.currentTarget.style.transform="translateX(0)"; }}
           >
             <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #7C4DFF, #FF6B9D)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-              fontWeight: 700,
-              color: "#FFFFFF",
-              fontFamily: "Fredoka One"
+              width:36, height:36, borderRadius:"50%", flexShrink:0,
+              background:"linear-gradient(135deg, var(--violet), var(--pink))",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:14, fontWeight:700, color:"#fff", fontFamily:"Fredoka One",
+              boxShadow:"0 3px 10px var(--violet-glow)",
             }}>
               {user?.email?.[0]?.toUpperCase() || "U"}
             </div>
-            <div style={{ overflow: "hidden", flex: 1 }}>
-              <div style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#2D1B69",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                fontFamily: "Nunito"
-              }}>
-                {user?.email || "User"}
-              </div>
-              <div style={{
-                fontSize: 11,
-                color: "#6B5B8A",
-                fontFamily: "Nunito",
-                fontWeight: 500
-              }}>
-                Settings
-              </div>
+            <div style={{ overflow:"hidden", flex:1 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{user?.email || "User"}</div>
+              <div style={{ fontSize:10, color:"var(--text3)", fontWeight:600 }}>⚙ Settings</div>
             </div>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Content */}
-      <div style={{ flex: 1, padding: "32px 48px", background: "#FAF6FF" }}>
-        <div>{children}</div>
-      </div>
+      {/* ── MAIN CONTENT ── */}
+      <main className="main-content" style={{ position:"relative", zIndex:1 }}>
+        {isLoading ? (
+          <div style={{ animation:"fadeIn 0.3s ease" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:32 }}>
+              <div className="skeleton skeleton-title" style={{ width:220, height:32 }} />
+              <div className="skeleton" style={{ width:80, height:32, borderRadius:99 }} />
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"320px 1fr", gap:24, marginBottom:24 }}>
+              <div className="skeleton" style={{ height:260, borderRadius:20 }} />
+              <div className="skeleton" style={{ height:260, borderRadius:20 }} />
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))", gap:16 }}>
+              {[...Array(8)].map((_,i) => (
+                <div key={i} className="skeleton" style={{ height:130, borderRadius:18, animationDelay:`${i*0.06}s` }} />
+              ))}
+            </div>
+          </div>
+        ) : (
+        <div style={{ animation:"pageIn 0.5s var(--spring)" }}>{children}</div>
+        )}
+      </main>
 
-      {/* Mobile Nav */}
-      <div style={{
-        display: window.innerWidth < 768 ? "flex" : "none",
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "#FFFFFF",
-        borderTop: "1px solid rgba(124,77,255,0.12)",
-        padding: "12px 24px",
-        justifyContent: "space-around",
-        zIndex: 1000
-      }}>
+      {/* ── MOBILE NAV ── */}
+      <nav className="mobile-nav">
         {links.map(l => (
-          <div
-            key={l.id}
-            onClick={() => onNav(l.id)}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-              padding: "8px",
-              borderRadius: 12,
-              cursor: "pointer",
-              transition: "all 0.25s",
-              color: page === l.id ? "#7C4DFF" : "#6B5B8A",
-              background: page === l.id ? "rgba(124,77,255,0.08)" : "transparent"
-            }}
-          >
-            <span style={{ fontSize: 16 }}>{l.emoji}</span>
-            <span style={{ fontSize: 10, fontFamily: "Nunito", fontWeight: 600 }}>{l.label.split(" ")[0]}</span>
+          <div key={l.id} className={`mobile-nav-item ${page===l.id?"active":""}`} onClick={() => onNav(l.id)}>
+            <span style={{ fontSize:18 }}>{l.emoji}</span>
+            <span>{l.label.split(" ")[0]}</span>
           </div>
         ))}
-      </div>
-
-      {/* Floating AI Chat Button */}
-      <div style={{ position: "relative" }}>
-        {chatTooltip && (
-          <div style={{
-            position: "absolute",
-            bottom: 80,
-            right: 0,
-            background: "#2D1B69",
-            color: "#FFFFFF",
-            padding: "8px 12px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontFamily: "Nunito",
-            fontWeight: 500,
-            whiteSpace: "nowrap",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-            zIndex: 1001,
-            animation: "fadeIn 0.2s ease-out"
-          }}>
-            Need help? Chat with our AI! 🤖
-          </div>
-        )}
-        <div style={{
-          position: "fixed",
-          bottom: 24,
-          right: 24,
-          width: 60,
-          height: 60,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #7C4DFF, #FF6B9D)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          boxShadow: "0 0 20px rgba(124,77,255,0.4)",
-          transition: "all 0.3s",
-          zIndex: 1000,
-          animation: "pulse 2s infinite"
-        }}
-        onMouseEnter={() => {
-          setChatTooltip(true);
-        }}
-        onMouseLeave={() => {
-          setChatTooltip(false);
-        }}
-        onClick={() => onNav("ai-chat")}
-        >
-          <span style={{ fontSize: 24 }}>🤖</span>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 20px rgba(124,77,255,0.4); }
-          50% { box-shadow: 0 0 40px rgba(255,107,157,0.6); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes drawCircle {
-          from { stroke-dashoffset: ${2 * Math.PI * 70}; }
-          to { stroke-dashoffset: 0; }
-        }
-        @keyframes countUp {
-          from { opacity: 0; transform: scale(0.8); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes cardEntrance {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes timelineDot {
-          0% { transform: scale(0); }
-          50% { transform: scale(1.2); }
-          100% { transform: scale(1); }
-        }
-      `}</style>
+      </nav>
     </div>
   );
 }
 
-// ─── Dashboard ─────────────────────────────────────────────────────────────────
+// ── Dashboard ──
 export function Dashboard({ brandProfile, onNav, outputs, favorites, selectedOutputs, onDownloadPDF }) {
   const [animatedScore, setAnimatedScore] = useState(0);
-  const [circleDrawn, setCircleDrawn] = useState(false);
+  const [circleReady, setCircleReady] = useState(false);
+  const [hoveredTool, setHoveredTool] = useState(null);
+  useScrollReveal();
 
-  // Check which required outputs are selected
   const requiredOutputs = [
-    { key: "Brand Names", feature: "Brand Names" },
-    { key: "Color Palette", feature: "Color Palette" },
-    { key: "Font Pairing", feature: "Font Pairing" },
-    { key: "Logo Creator", feature: "Logo Creator" },
-    { key: "Ad Copy", feature: "Ad Copy" },
-    { key: "Social Bio", feature: "Social Bio" },
-    { key: "Email Templates", feature: "Email Templates" },
+    { key:"Brand Names" }, { key:"Color Palette" }, { key:"Font Pairing" },
+    { key:"Logo Creator" }, { key:"Ad Copy" }, { key:"Social Bio" }, { key:"Email Templates" },
   ];
-
-  const selectedCount = requiredOutputs.filter(r => selectedOutputs[r.feature]).length;
+  const selectedCount = requiredOutputs.filter(r => selectedOutputs[r.key]).length;
   const allSelected = selectedCount === requiredOutputs.length;
 
   const score = Math.min(100, 20 + (brandProfile ? 30 : 0) + Math.min(50, outputs.length * 3));
-  const scoreColor = score >= 80 ? "#4ECDC4" : score >= 50 ? "#FFC107" : "#FF6B6B";
+  const scoreColor = score >= 80 ? "var(--teal)" : score >= 50 ? "var(--gold)" : "var(--pink)";
   const circumference = 2 * Math.PI * 70;
+  const dashOffset = circumference - (score / 100) * circumference;
 
-  const getScoreMessage = (score) => {
-    if (score <= 30) return "🌱 Your story is just beginning…";
-    if (score <= 60) return "⚡ The plot is thickening!";
-    if (score <= 80) return "🔥 Your brand is heating up!";
+  const getScoreMessage = (s) => {
+    if (s <= 30) return "🌱 Your story is just beginning…";
+    if (s <= 60) return "⚡ The plot is thickening!";
+    if (s <= 80) return "🔥 Your brand is heating up!";
     return "🏆 A legendary brand story!";
   };
 
   const tools = [
-    { name: "Brand Names", id: "brand-identity", emoji: "✨", color: "#7C4DFF" },
-    { name: "Logo Creator", id: "brand-identity", emoji: "🎨", color: "#FF6B9D" },
-    { name: "Color Palette", id: "brand-identity", emoji: "🌈", color: "#FFB300" },
-    { name: "Font Pairing", id: "brand-identity", emoji: "🖋️", color: "#00BCD4" },
-    { name: "Ad Copy", id: "content-copy", emoji: "📣", color: "#4CAF50" },
-    { name: "Social Bio", id: "content-copy", emoji: "🌟", color: "#FF9800" },
-    { name: "Email Builder", id: "content-copy", emoji: "💌", color: "#E91E63" },
-    { name: "Content Calendar", id: "content-copy", emoji: "📅", color: "#9C27B0" },
-    { name: "Voice & Tone", id: "voice-style", emoji: "🎙️", color: "#7C4DFF" },
-    { name: "Sentiment Analysis", id: "voice-style", emoji: "💡", color: "#00ACC1" },
+    { name:"Brand Names",       id:"brand-identity", emoji:"✨", color:"#7C4DFF" },
+    { name:"Logo Creator",      id:"brand-identity", emoji:"🎨", color:"#F050A8" },
+    { name:"Color Palette",     id:"brand-identity", emoji:"🌈", color:"#FFAD00" },
+    { name:"Font Pairing",      id:"brand-identity", emoji:"🖋️", color:"#00C9B4" },
+    { name:"Ad Copy",           id:"content-copy",   emoji:"📣", color:"#4CAF50" },
+    { name:"Social Bio",        id:"content-copy",   emoji:"🌟", color:"#FF9800" },
+    { name:"Email Builder",     id:"content-copy",   emoji:"💌", color:"#E91E63" },
+    { name:"Content Calendar",  id:"content-copy",   emoji:"📅", color:"#9C27B0" },
+    { name:"Voice & Tone",      id:"voice-style",    emoji:"🎙️", color:"#7C4DFF" },
+    { name:"Sentiment Analysis",id:"voice-style",    emoji:"💡", color:"#00ACC1" },
   ];
 
   useEffect(() => {
-    // Animate circle drawing
-    setTimeout(() => setCircleDrawn(true), 500);
-
-    // Animate score counting
-    let current = 0;
-    const increment = score / 50;
+    setTimeout(() => setCircleReady(true), 400);
+    let cur = 0;
+    const inc = score / 55;
     const timer = setInterval(() => {
-      current += increment;
-      if (current >= score) {
-        setAnimatedScore(score);
-        clearInterval(timer);
-      } else {
-        setAnimatedScore(Math.floor(current));
-      }
-    }, 30);
-
+      cur += inc;
+      if (cur >= score) { setAnimatedScore(score); clearInterval(timer); }
+      else setAnimatedScore(Math.floor(cur));
+    }, 28);
     return () => clearInterval(timer);
   }, [score]);
 
+  const hexToRgb = (hex) => {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `${r},${g},${b}`;
+  };
+
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div style={{ maxWidth:1180, margin:"0 auto" }}>
+
       {/* Chapter Heading */}
-      <div style={{ textAlign: "center", marginBottom: 48 }}>
-        <div style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: "#7C4DFF",
-          fontFamily: "Nunito",
-          marginBottom: 8,
-          textTransform: "uppercase",
-          letterSpacing: "1px"
-        }}>
-          📖 Chapter 1
+      <div className="reveal" style={{ marginBottom:44, display:"flex", alignItems:"flex-end", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
+        <div>
+          <div style={{ fontSize:12, fontWeight:800, color:"var(--violet)", textTransform:"uppercase", letterSpacing:"1.5px", marginBottom:6 }}>📖 Chapter 1</div>
+          <h1 style={{ fontSize:"clamp(32px,4vw,48px)", color:"var(--text)", lineHeight:1.1, marginBottom:6 }}>Your Brand Story So Far</h1>
+          <p style={{ fontSize:16, color:"var(--text2)", fontStyle:"italic", fontWeight:500 }}>Every great brand starts with a single chapter. Yours is just beginning.</p>
         </div>
-        <h1 style={{
-          fontSize: 48,
-          fontWeight: 400,
-          marginBottom: 16,
-          color: "#2D1B69",
-          fontFamily: "Fredoka One"
-        }}>
-          Your Brand Story So Far
-        </h1>
-        <p style={{
-          fontSize: 18,
-          color: "#6B5B8A",
-          fontFamily: "Nunito",
-          fontStyle: "italic",
-          fontWeight: 500,
-          maxWidth: 600,
-          margin: "0 auto"
-        }}>
-          Every great brand starts with a single chapter. Yours is just beginning.
-        </p>
+        <div style={{ display:"flex", gap:10 }}>
+          <button className="btn-ghost btn-sm" onClick={() => onNav("onboarding")}>📝 Edit Profile</button>
+          <button className="btn-primary btn-sm" onClick={() => onNav("brand-identity")}>🎨 Build Brand</button>
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 32, marginBottom: 48 }}>
-        {/* Story Progress Card */}
-        <div style={{
-          background: "#FFFFFF",
-          borderRadius: 20,
-          padding: 32,
-          boxShadow: "0 8px 32px rgba(124,77,255,0.1)",
-          border: "1px solid rgba(124,77,255,0.12)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center"
-        }}>
-          <div style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: "#2D1B69",
-            fontFamily: "Fredoka One",
-            marginBottom: 24,
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}>
-            Story Progress 📊
+      {/* Top grid: score + brand card */}
+      <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:24, marginBottom:28 }}>
+        {/* Score ring */}
+        <div className="glass-card reveal reveal-d1" style={{ padding:28, display:"flex", flexDirection:"column", alignItems:"center", gap:0 }}>
+          <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
+            Story Progress <span style={{ animation:"pulseBeat 2s infinite", display:"inline-block" }}>📊</span>
           </div>
-
-          <svg width="180" height="180" viewBox="0 0 180 180" style={{ marginBottom: 20 }}>
-            <circle cx="90" cy="90" r="75" fill="none" stroke="rgba(124,77,255,0.1)" strokeWidth="8" />
+          <svg width="170" height="170" viewBox="0 0 170 170" style={{ marginBottom:16, overflow:"visible" }}>
+            {/* Glow filter */}
+            <defs>
+              <filter id="glowFilter">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            {/* Track */}
+            <circle cx="85" cy="85" r="70" fill="none" stroke="rgba(124,77,255,0.1)" strokeWidth="8"/>
+            {/* Animated fill */}
             <circle
-              cx="90"
-              cy="90"
-              r="75"
-              fill="none"
-              stroke={scoreColor}
-              strokeWidth="8"
+              cx="85" cy="85" r="70" fill="none"
+              stroke={scoreColor} strokeWidth="8"
               strokeDasharray={circumference}
-              strokeDashoffset={circleDrawn ? circumference - (score / 100) * circumference : circumference}
+              strokeDashoffset={circleReady ? dashOffset : circumference}
               strokeLinecap="round"
-              transform="rotate(-90 90 90)"
-              style={{
-                transition: circleDrawn ? "stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1)" : "none"
-              }}
+              transform="rotate(-90 85 85)"
+              filter="url(#glowFilter)"
+              style={{ transition: circleReady ? "stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)" : "none" }}
             />
-            <text
-              x="90"
-              y="85"
-              textAnchor="middle"
-              fill={scoreColor}
-              fontSize="42"
-              fontFamily="Fredoka One"
-              fontWeight="400"
-              style={{
-                animation: "countUp 0.5s ease-out",
-                opacity: animatedScore > 0 ? 1 : 0,
-                transform: animatedScore > 0 ? "scale(1)" : "scale(0.8)"
-              }}
-            >
+            {/* Score number */}
+            <text x="85" y="79" textAnchor="middle" fill={scoreColor} fontSize="44" fontFamily="Fredoka One" fontWeight="400">
               {animatedScore}
             </text>
-            <text
-              x="90"
-              y="105"
-              textAnchor="middle"
-              fill="rgba(107,91,138,0.6)"
-              fontSize="14"
-              fontFamily="Nunito"
-              fontWeight="600"
-            >
-              /100
-            </text>
+            <text x="85" y="99" textAnchor="middle" fill="var(--text3)" fontSize="13" fontFamily="Nunito" fontWeight="600">/100</text>
           </svg>
-
-          <div style={{
-            fontSize: 16,
-            color: "#6B5B8A",
-            textAlign: "center",
-            fontFamily: "Nunito",
-            fontWeight: 500,
-            lineHeight: 1.4
-          }}>
+          {/* Progress mini-bar */}
+          <div className="progress-bar" style={{ width:"100%", marginBottom:14 }}>
+            <div className="progress-fill" style={{ width:`${score}%` }} />
+          </div>
+          <div style={{ fontSize:14, color:"var(--text2)", textAlign:"center", lineHeight:1.5, fontWeight:600 }}>
             {getScoreMessage(score)}
           </div>
         </div>
 
-        {/* Meet Your Brand Card */}
-        <div style={{
-          background: "#FFFFFF",
-          borderRadius: 24,
-          padding: 32,
-          boxShadow: "0 8px 32px rgba(124,77,255,0.1)",
-          border: "1.5px solid rgba(124,77,255,0.15)",
-          position: "relative"
-        }}>
-          <div style={{
-            fontSize: 24,
-            fontWeight: 400,
-            color: "#2D1B69",
-            fontFamily: "Fredoka One",
-            marginBottom: 24,
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}>
+        {/* Brand profile card */}
+        <div className="glass-card reveal reveal-d2" style={{ padding:28, position:"relative" }}>
+          <div style={{ fontSize:20, fontWeight:400, color:"var(--text)", marginBottom:20, display:"flex", alignItems:"center", gap:8 }}>
             Meet Your Brand 🧡
           </div>
-
-          <button
-            onClick={() => onNav("onboarding")}
-            style={{
-              position: "absolute",
-              top: 24,
-              right: 24,
-              background: "transparent",
-              border: "2px solid #7C4DFF",
-              borderRadius: 20,
-              padding: "8px 16px",
-              cursor: "pointer",
-              fontSize: 12,
-              fontFamily: "Nunito",
-              fontWeight: 600,
-              color: "#7C4DFF",
-              transition: "all 0.25s",
-              display: "flex",
-              alignItems: "center",
-              gap: 6
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "#7C4DFF";
-              e.currentTarget.style.color = "#FFFFFF";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "#7C4DFF";
-            }}
-          >
-            ✏️ Edit
-          </button>
-
           {brandProfile ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:10 }}>
               {[
-                { key: "Business", value: brandProfile.businessDo, color: "#7C4DFF" },
-                { key: "Industry", value: brandProfile.industry, color: "#FF6B9D" },
-                { key: "Stage", value: brandProfile.businessStage, color: "#00BCD4" },
-                { key: "Target Age", value: brandProfile.targetAge?.join(", "), color: "#4CAF50" },
-                { key: "Gender Focus", value: brandProfile.genderFocus, color: "#FFB300" },
-                { key: "Color Mood", value: brandProfile.colorMood, color: "#9C27B0" },
-                { key: "Logo Style", value: brandProfile.logoStyle, color: "#E91E63" },
-                { key: "Design Aesthetic", value: brandProfile.designAesthetic, color: "#3F51B5" },
-                { key: "Imagery Style", value: brandProfile.imageryStyle, color: "#009688" },
-                { key: "Brand Voice", value: brandProfile.brandVoice, color: "#FF9800" },
-                { key: "Brand Goals", value: brandProfile.brandGoals?.join(", "), color: "#795548" },
-                { key: "Personality", value: `Playful: ${brandProfile.personality?.playful}%, Minimal: ${brandProfile.personality?.minimal}%, Modern: ${brandProfile.personality?.modern}%`, color: "#607D8B" },
-              ].filter(item => item.value).map((item, index) => (
+                { key:"Business", value:brandProfile.businessDo, color:"#7C4DFF" },
+                { key:"Industry", value:brandProfile.industry, color:"#F050A8" },
+                { key:"Stage", value:brandProfile.businessStage, color:"#00C9B4" },
+                { key:"Target Age", value:brandProfile.targetAge?.join(", "), color:"#4CAF50" },
+                { key:"Gender Focus", value:brandProfile.genderFocus, color:"#FFAD00" },
+                { key:"Color Mood", value:brandProfile.colorMood, color:"#9C27B0" },
+                { key:"Logo Style", value:brandProfile.logoStyle, color:"#E91E63" },
+                { key:"Design Aesthetic", value:brandProfile.designAesthetic, color:"#3F51B5" },
+                { key:"Brand Voice", value:brandProfile.brandVoice, color:"#FF9800" },
+                { key:"Brand Goals", value:brandProfile.brandGoals?.join(", "), color:"#7C4DFF" },
+              ].filter(item => item.value).map((item, i) => (
                 <div
                   key={item.key}
                   style={{
-                    background: `rgba(${item.color === "#7C4DFF" ? "124,77,255" : item.color === "#FF6B9D" ? "255,107,157" : item.color === "#00BCD4" ? "0,188,212" : item.color === "#4CAF50" ? "76,175,80" : item.color === "#FFB300" ? "255,179,0" : item.color === "#9C27B0" ? "156,39,176" : item.color === "#E91E63" ? "233,30,99" : item.color === "#3F51B5" ? "63,81,181" : item.color === "#009688" ? "0,150,136" : item.color === "#FF9800" ? "255,152,0" : item.color === "#795548" ? "121,85,72" : "96,125,139"}, 0.1)`,
-                    border: `1px solid rgba(${item.color === "#7C4DFF" ? "124,77,255" : item.color === "#FF6B9D" ? "255,107,157" : item.color === "#00BCD4" ? "0,188,212" : item.color === "#4CAF50" ? "76,175,80" : item.color === "#FFB300" ? "255,179,0" : item.color === "#9C27B0" ? "156,39,176" : item.color === "#E91E63" ? "233,30,99" : item.color === "#3F51B5" ? "63,81,181" : item.color === "#009688" ? "0,150,136" : item.color === "#FF9800" ? "255,152,0" : item.color === "#795548" ? "121,85,72" : "96,125,139"}, 0.2)`,
-                    borderRadius: 16,
-                    padding: "12px 16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                    minWidth: 120,
-                    animation: "cardEntrance 0.5s ease-out",
-                    animationDelay: `${index * 100}ms`,
-                    animationFillMode: "both"
+                    background:`rgba(${hexToRgb(item.color)},0.09)`,
+                    border:`1.5px solid rgba(${hexToRgb(item.color)},0.2)`,
+                    borderRadius:14, padding:"10px 14px",
+                    minWidth:110, textAlign:"center",
+                    animation:"cardIn 0.5s var(--spring) both",
+                    animationDelay:`${i * 0.05}s`,
+                    transition:"transform 0.2s var(--spring), box-shadow 0.2s",
+                    cursor:"default",
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px) scale(1.03)"; e.currentTarget.style.boxShadow=`0 8px 20px rgba(${hexToRgb(item.color)},0.18)`; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform="translateY(0) scale(1)"; e.currentTarget.style.boxShadow="none"; }}
                 >
-                  <div style={{
-                    fontSize: 11,
-                    color: "#6B5B8A",
-                    fontFamily: "Nunito",
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px"
-                  }}>
-                    {item.key}
-                  </div>
-                  <div style={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "#2D1B69",
-                    fontFamily: "Nunito",
-                    textAlign: "center",
-                    lineHeight: 1.3
-                  }}>
-                    {item.value}
-                  </div>
+                  <div style={{ fontSize:10, color:"var(--text3)", fontWeight:800, textTransform:"uppercase", letterSpacing:"0.6px", marginBottom:4 }}>{item.key}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--text)", lineHeight:1.3 }}>{item.value}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div style={{ textAlign: "center", padding: "40px 20px" }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
-              <div style={{
-                fontSize: 20,
-                fontWeight: 400,
-                color: "#2D1B69",
-                fontFamily: "Fredoka One",
-                marginBottom: 8
-              }}>
-                No story yet!
-              </div>
-              <div style={{
-                fontSize: 14,
-                color: "#6B5B8A",
-                fontFamily: "Nunito",
-                fontWeight: 500,
-                marginBottom: 24
-              }}>
-                Let's build your brand profile
-              </div>
-              <button
-                onClick={() => onNav("onboarding")}
-                style={{
-                  background: "linear-gradient(135deg, #7C4DFF, #FF6B9D)",
-                  border: "none",
-                  borderRadius: 20,
-                  padding: "12px 24px",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontFamily: "Nunito",
-                  fontWeight: 600,
-                  color: "#FFFFFF",
-                  transition: "all 0.25s",
-                  boxShadow: "0 4px 16px rgba(124,77,255,0.3)"
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-              >
-                Start Your Story ✨
-              </button>
+            <div style={{ textAlign:"center", padding:"32px 20px" }}>
+              <div style={{ fontSize:52, marginBottom:14, animation:"float 3s ease-in-out infinite" }}>📭</div>
+              <div style={{ fontSize:20, color:"var(--text)", marginBottom:8 }}>No story yet!</div>
+              <div style={{ fontSize:14, color:"var(--text2)", marginBottom:22, fontWeight:500 }}>Let's build your brand profile</div>
+              <button className="btn-primary" onClick={() => onNav("onboarding")}>Start Your Story ✨</button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Selection Progress Card - Show when user has made selections */}
+      {/* Selection Progress — only when user has selections */}
       {selectedCount > 0 && (
-        <div style={{
-          background: "linear-gradient(135deg, rgba(78,205,196,0.1) 0%, rgba(124,77,255,0.08) 100%)",
-          border: "1px solid rgba(78,205,196,0.3)",
-          borderRadius: 20,
-          padding: 28,
-          marginBottom: 40,
+        <div className="reveal" style={{
+          background:"linear-gradient(135deg, rgba(0,201,180,0.08), rgba(124,77,255,0.06))",
+          border:"1.5px solid rgba(0,201,180,0.25)",
+          borderRadius:20, padding:24, marginBottom:24,
+          animation:"cardIn 0.5s var(--spring)",
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14, flexWrap:"wrap", gap:12 }}>
             <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#2D1B69", marginBottom: 4 }}>
-                📋 Your Brand Selections
-              </div>
-              <p style={{ color: "#6B5B8A", fontSize: 13 }}>
-                {selectedCount} of {requiredOutputs.length} items confirmed
-              </p>
+              <div style={{ fontSize:16, fontWeight:700, color:"var(--text)", marginBottom:3 }}>📋 Brand Selections</div>
+              <div style={{ fontSize:13, color:"var(--text2)", fontWeight:500 }}>{selectedCount} of {requiredOutputs.length} confirmed</div>
             </div>
+            {/* Conic progress ring */}
             <div style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: `conic-gradient(#4ECDC4 0deg ${(selectedCount / requiredOutputs.length) * 360}deg, rgba(78,205,196,0.1) ${(selectedCount / requiredOutputs.length) * 360}deg)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              fontSize: 18,
-              color: "#4ECDC4",
+              width:52, height:52, borderRadius:"50%", flexShrink:0,
+              background:`conic-gradient(var(--teal) 0deg ${(selectedCount/requiredOutputs.length)*360}deg, rgba(0,201,180,0.12) ${(selectedCount/requiredOutputs.length)*360}deg)`,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:14, fontWeight:700, color:"var(--teal)",
             }}>
               {selectedCount}/{requiredOutputs.length}
             </div>
           </div>
-
-          {/* Selections Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10, marginBottom: 16 }}>
-            {requiredOutputs.map((req) => {
-              const isSelected = selectedOutputs[req.feature];
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))", gap:8, marginBottom:14 }}>
+            {requiredOutputs.map(req => {
+              const sel = selectedOutputs[req.key];
               return (
-                <div
-                  key={req.key}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "10px 12px",
-                    background: isSelected ? "rgba(78,205,196,0.15)" : "rgba(0,0,0,0.03)",
-                    borderRadius: 10,
-                    borderLeft: `3px solid ${isSelected ? "#4ECDC4" : "transparent"}`,
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>{isSelected ? "✅" : "⬜"}</span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: isSelected ? "#2D1B69" : "#6B5B8A" }}>
-                    {req.key}
-                  </span>
+                <div key={req.key} style={{
+                  display:"flex", alignItems:"center", gap:7, padding:"9px 12px",
+                  background: sel ? "rgba(0,201,180,0.12)" : "rgba(0,0,0,0.03)",
+                  borderRadius:10, borderLeft:`3px solid ${sel ? "var(--teal)" : "transparent"}`,
+                  transition:"all 0.3s var(--spring)",
+                }}>
+                  <span style={{ fontSize:14, transition:"transform 0.3s var(--spring)", transform: sel ? "scale(1.2)" : "scale(1)" }}>{sel ? "✅" : "⬜"}</span>
+                  <span style={{ fontSize:11, fontWeight:700, color: sel ? "var(--text)" : "var(--text2)" }}>{req.key}</span>
                 </div>
               );
             })}
           </div>
-
-          {/* Progress Bar */}
-          <div style={{ height: 6, background: "rgba(0,0,0,0.06)", borderRadius: 3, overflow: "hidden", marginBottom: 16 }}>
-            <div style={{
-              height: "100%",
-              background: "linear-gradient(90deg, #4ECDC4, #7C4DFF)",
-              width: `${(selectedCount / requiredOutputs.length) * 100}%`,
-              transition: "width 0.3s ease",
-              borderRadius: 3,
-            }} />
+          <div className="progress-bar" style={{ marginBottom:14 }}>
+            <div className="progress-fill" style={{ width:`${(selectedCount/requiredOutputs.length)*100}%` }} />
           </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: "flex", gap: 12 }}>
-            {allSelected ? (
-              <button
-                onClick={onDownloadPDF}
-                style={{
-                  flex: 1,
-                  background: "linear-gradient(135deg, #7C4DFF, #FF6B9D)",
-                  border: "none",
-                  borderRadius: 16,
-                  padding: "14px 24px",
-                  cursor: "pointer",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  boxShadow: "0 4px 16px rgba(124,77,255,0.3)"
-                }}
-              >
-                🎉 Download Complete Brand PDF
-              </button>
-            ) : (
-              <button
-                onClick={() => onNav("brand-identity")}
-                style={{
-                  flex: 1,
-                  background: "#7C4DFF",
-                  border: "none",
-                  borderRadius: 16,
-                  padding: "14px 24px",
-                  cursor: "pointer",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                🎨 Continue Building Your Brand
-              </button>
-            )}
-          </div>
+          <button
+            className="btn-primary"
+            onClick={allSelected ? onDownloadPDF : () => onNav("brand-identity")}
+            style={{ width:"100%" }}
+          >
+            {allSelected ? "🎉 Download Complete Brand PDF" : "🎨 Continue Building Your Brand →"}
+          </button>
         </div>
       )}
 
-      {/* Your Toolbox */}
-      <div style={{ marginBottom: 48 }}>
-        <div style={{
-          fontSize: 32,
-          fontWeight: 400,
-          color: "#2D1B69",
-          fontFamily: "Fredoka One",
-          marginBottom: 8,
-          display: "flex",
-          alignItems: "center",
-          gap: 12
-        }}>
+      {/* Toolbox */}
+      <div className="reveal" style={{ marginBottom:40 }}>
+        <div style={{ fontSize:28, color:"var(--text)", marginBottom:18, display:"flex", alignItems:"center", gap:10 }}>
           Your Toolbox 🧰
         </div>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-          gap: 20
-        }}>
-          {tools.map((tool, index) => {
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(172px,1fr))", gap:16 }}>
+          {tools.map((tool, i) => {
             const used = outputs.some(o => o.feature === tool.name);
+            const rgb = hexToRgb(tool.color);
+            const isHovered = hoveredTool === tool.name;
             return (
               <div
                 key={tool.name}
                 onClick={() => onNav(tool.id)}
                 style={{
-                  background: "#FFFFFF",
-                  borderRadius: 18,
-                  padding: 20,
-                  cursor: "pointer",
-                  transition: "all 0.25s",
-                  border: "1px solid rgba(124,77,255,0.12)",
-                  boxShadow: "0 4px 16px rgba(124,77,255,0.08)",
-                  animation: "cardEntrance 0.5s ease-out",
-                  animationDelay: `${index * 50}ms`,
-                  animationFillMode: "both"
+                  background: isHovered ? `rgba(${rgb},0.08)` : "rgba(255,252,255,0.85)",
+                  backdropFilter:"blur(12px)",
+                  border:`1.5px solid ${isHovered ? `rgba(${rgb},0.35)` : "var(--border)"}`,
+                  borderRadius:18, padding:"18px 16px",
+                  cursor:"pointer",
+                  transition:"all 0.28s var(--spring)",
+                  transform: isHovered ? "translateY(-6px) scale(1.02)" : "translateY(0) scale(1)",
+                  boxShadow: isHovered ? `0 14px 36px rgba(${rgb},0.18)` : "var(--shadow-xs)",
+                  animation:`cardIn 0.5s var(--spring) both`,
+                  animationDelay:`${i * 0.045}s`,
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = "translateY(-4px)";
-                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(124,77,255,0.15)";
-                  e.currentTarget.style.borderColor = tool.color;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 16px rgba(124,77,255,0.08)";
-                  e.currentTarget.style.borderColor = "rgba(124,77,255,0.12)";
-                }}
+                onMouseEnter={() => setHoveredTool(tool.name)}
+                onMouseLeave={() => setHoveredTool(null)}
               >
                 <div style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
-                  background: `rgba(${tool.color === "#7C4DFF" ? "124,77,255" : tool.color === "#FF6B9D" ? "255,107,157" : tool.color === "#FFB300" ? "255,179,0" : tool.color === "#00BCD4" ? "0,188,212" : tool.color === "#4CAF50" ? "76,175,80" : tool.color === "#FF9800" ? "255,152,0" : tool.color === "#E91E63" ? "233,30,99" : tool.color === "#9C27B0" ? "156,39,176" : "0,172,193"}, 0.15)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 20,
-                  marginBottom: 12
+                  width:44, height:44, borderRadius:12, marginBottom:12,
+                  background:`rgba(${rgb},0.14)`,
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:20,
+                  transition:"transform 0.28s var(--spring)",
+                  transform: isHovered ? "scale(1.18) rotate(5deg)" : "scale(1) rotate(0deg)",
                 }}>
                   {tool.emoji}
                 </div>
+                <div style={{ fontSize:14, color:"var(--text)", marginBottom:8 }}>{tool.name}</div>
                 <div style={{
-                  fontSize: 14,
-                  fontWeight: 400,
-                  color: "#2D1B69",
-                  fontFamily: "Fredoka One",
-                  marginBottom: 8
-                }}>
-                  {tool.name}
-                </div>
-                <div style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 8px",
-                  borderRadius: 12,
-                  fontSize: 11,
-                  fontFamily: "Nunito",
-                  fontWeight: 600,
-                  background: used ? "rgba(76,205,196,0.1)" : "rgba(107,91,138,0.1)",
-                  color: used ? "#4ECDC4" : "#6B5B8A",
-                  border: `1px solid ${used ? "rgba(76,205,196,0.2)" : "rgba(107,91,138,0.2)"}`
+                  display:"inline-flex", alignItems:"center", gap:5,
+                  padding:"3px 9px", borderRadius:99,
+                  fontSize:11, fontWeight:700,
+                  background: used ? "rgba(0,201,180,0.1)" : "rgba(107,91,138,0.08)",
+                  color: used ? "var(--teal)" : "var(--text3)",
+                  border:`1px solid ${used ? "rgba(0,201,180,0.2)" : "rgba(107,91,138,0.15)"}`,
                 }}>
                   {used ? "✓ Used" : "Not used"}
                 </div>
@@ -907,164 +516,28 @@ export function Dashboard({ brandProfile, onNav, outputs, favorites, selectedOut
         </div>
       </div>
 
-      {/* Download Brand PDF */}
-      {selectedOutputs['brand-identity'] && selectedOutputs['content-copy'] && selectedOutputs['voice-style'] && (
-        <div style={{
-          background: "#FFFFFF",
-          borderRadius: 20,
-          padding: 32,
-          boxShadow: "0 8px 32px rgba(124,77,255,0.1)",
-          border: "1px solid rgba(124,77,255,0.12)",
-          textAlign: "center",
-          marginBottom: 48
-        }}>
-          <div style={{
-            fontSize: 28,
-            fontWeight: 400,
-            color: "#2D1B69",
-            fontFamily: "Fredoka One",
-            marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8
-          }}>
-            🎉 Ready to Download Your Brand PDF!
-          </div>
-          <p style={{
-            color: "#6B5B8A",
-            fontSize: 16,
-            fontFamily: "Nunito",
-            marginBottom: 24
-          }}>
-            You've selected all your brand assets. Download your complete brand package now!
-          </p>
-          <button
-            onClick={() => {
-              // Simulate download
-              const link = document.createElement('a');
-              link.href = '#'; // placeholder
-              link.download = 'brandcraft-brand-package.pdf';
-              link.click();
-              showToast("📄 Brand PDF downloaded!");
-            }}
-            style={{
-              background: "linear-gradient(135deg, #7C4DFF, #FF6B9D)",
-              border: "none",
-              borderRadius: 20,
-              padding: "16px 32px",
-              cursor: "pointer",
-              fontSize: 16,
-              fontFamily: "Nunito",
-              fontWeight: 600,
-              color: "#FFFFFF",
-              transition: "all 0.25s",
-              boxShadow: "0 4px 16px rgba(124,77,255,0.3)"
-            }}
-            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-            onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-          >
-            📥 Download Brand PDF
-          </button>
-        </div>
-      )}
-
-      {/* Recent Chapters */}
+      {/* Recent outputs timeline */}
       {outputs.length > 0 && (
-        <div style={{
-          background: "#FFFFFF",
-          borderRadius: 20,
-          padding: 32,
-          boxShadow: "0 8px 32px rgba(124,77,255,0.1)",
-          border: "1px solid rgba(124,77,255,0.12)"
-        }}>
-          <div style={{
-            fontSize: 28,
-            fontWeight: 400,
-            color: "#2D1B69",
-            fontFamily: "Fredoka One",
-            marginBottom: 24,
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}>
-            Recent Chapters 📚
-          </div>
-
-          <div style={{ position: "relative" }}>
-            {outputs.slice(-6).reverse().map((output, index) => (
-              <div
-                key={index}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 20,
-                  padding: "20px 0",
-                  borderBottom: index < Math.min(5, outputs.length - 1) ? "1px solid rgba(124,77,255,0.08)" : "none",
-                  animation: "cardEntrance 0.5s ease-out",
-                  animationDelay: `${index * 100}ms`,
-                  animationFillMode: "both"
-                }}
-              >
+        <div className="glass-card reveal" style={{ padding:28, marginBottom:28 }}>
+          <div style={{ fontSize:24, color:"var(--text)", marginBottom:22, display:"flex", alignItems:"center", gap:8 }}>Recent Chapters 📚</div>
+          <div style={{ position:"relative" }}>
+            <div style={{ position:"absolute", left:5, top:0, bottom:0, width:2, background:"linear-gradient(180deg, var(--violet), var(--pink))", borderRadius:1, opacity:0.2 }} />
+            {outputs.slice(-6).reverse().map((output, i) => (
+              <div key={i} style={{
+                display:"flex", gap:20, paddingLeft:24, paddingBottom:20, position:"relative",
+                animation:"cardIn 0.5s var(--spring) both",
+                animationDelay:`${i * 0.07}s`,
+              }}>
                 <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 2
-                }}>
-                  <div style={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: "50%",
-                    background: "#7C4DFF",
-                    animation: "timelineDot 0.5s ease-out",
-                    animationDelay: `${index * 100 + 300}ms`,
-                    animationFillMode: "both"
-                  }}></div>
-                  {index < Math.min(5, outputs.length - 1) && (
-                    <div style={{
-                      width: 2,
-                      height: 40,
-                      background: "rgba(124,77,255,0.2)",
-                      borderRadius: 1
-                    }}></div>
-                  )}
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "#2D1B69",
-                    fontFamily: "Fredoka One",
-                    marginBottom: 4
-                  }}>
-                    {output.feature}
-                  </div>
-                  <div style={{
-                    fontSize: 12,
-                    color: "#6B5B8A",
-                    fontFamily: "Nunito",
-                    fontWeight: 500,
-                    marginBottom: 8
-                  }}>
-                    {new Date(output.time).toLocaleString()}
-                  </div>
-                  <div style={{
-                    fontSize: 14,
-                    color: "#2D1B69",
-                    fontFamily: "Nunito",
-                    fontWeight: 500,
-                    lineHeight: 1.5,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical"
-                  }}>
-                    {output.preview}
-                  </div>
+                  position:"absolute", left:0, top:6,
+                  width:12, height:12, borderRadius:"50%",
+                  background:"linear-gradient(135deg, var(--violet), var(--pink))",
+                  boxShadow:"0 0 8px var(--violet-glow)",
+                }} />
+                <div style={{ flex:1, background:"rgba(124,77,255,0.03)", borderRadius:12, padding:"12px 14px", border:"1px solid var(--border)" }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:3 }}>{output.feature}</div>
+                  <div style={{ fontSize:11, color:"var(--text3)", marginBottom:6, fontWeight:600 }}>{new Date(output.time).toLocaleString()}</div>
+                  <div style={{ fontSize:13, color:"var(--text2)", lineHeight:1.5, overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{output.preview}</div>
                 </div>
               </div>
             ))}
@@ -1072,95 +545,11 @@ export function Dashboard({ brandProfile, onNav, outputs, favorites, selectedOut
         </div>
       )}
 
-      {/* Quick Action Buttons */}
-      <div style={{
-        display: "flex",
-        gap: 16,
-        marginTop: 48,
-        flexWrap: "wrap",
-        justifyContent: "center"
-      }}>
-        <button
-          onClick={() => onNav("content-copy")}
-          style={{
-            background: "linear-gradient(135deg, #7C4DFF, #FF6B9D)",
-            border: "none",
-            borderRadius: 20,
-            padding: "14px 28px",
-            cursor: "pointer",
-            fontSize: 16,
-            fontFamily: "Fredoka One",
-            fontWeight: 400,
-            color: "#FFFFFF",
-            transition: "all 0.25s",
-            boxShadow: "0 4px 16px rgba(124,77,255,0.3)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8
-          }}
-          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-        >
-          ✨ Generate New Content
-        </button>
-
-        <button
-          onClick={() => onNav("onboarding")}
-          style={{
-            background: "#FFFFFF",
-            border: "2px solid #7C4DFF",
-            borderRadius: 20,
-            padding: "14px 28px",
-            cursor: "pointer",
-            fontSize: 16,
-            fontFamily: "Nunito",
-            fontWeight: 600,
-            color: "#7C4DFF",
-            transition: "all 0.25s",
-            boxShadow: "0 2px 8px rgba(124,77,255,0.1)"
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = "#7C4DFF";
-            e.currentTarget.style.color = "#FFFFFF";
-            e.currentTarget.style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = "#FFFFFF";
-            e.currentTarget.style.color = "#7C4DFF";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
-          📝 Update Brand Profile
-        </button>
-
-        <button
-          onClick={() => onNav("brand-identity")}
-          style={{
-            background: "#FFFFFF",
-            border: "2px solid #FF6B9D",
-            borderRadius: 20,
-            padding: "14px 28px",
-            cursor: "pointer",
-            fontSize: 16,
-            fontFamily: "Nunito",
-            fontWeight: 600,
-            color: "#FF6B9D",
-            transition: "all 0.25s",
-            boxShadow: "0 2px 8px rgba(255,107,157,0.1)"
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = "#FF6B9D";
-            e.currentTarget.style.color = "#FFFFFF";
-            e.currentTarget.style.transform = "translateY(-2px)";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = "#FFFFFF";
-            e.currentTarget.style.color = "#FF6B9D";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
-          🎨 Build Brand Identity
-        </button>
+      {/* Quick actions */}
+      <div className="reveal" style={{ display:"flex", gap:12, flexWrap:"wrap", paddingBottom:40 }}>
+        <button className="btn-primary" onClick={() => onNav("content-copy")}>✨ Generate Content</button>
+        <button className="btn-ghost" onClick={() => onNav("onboarding")}>📝 Update Profile</button>
+        <button className="btn-ghost" onClick={() => onNav("brand-identity")}>🎨 Brand Identity</button>
       </div>
     </div>
   );

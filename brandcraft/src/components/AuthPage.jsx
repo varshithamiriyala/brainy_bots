@@ -1,677 +1,416 @@
 import { useState, useEffect, useRef } from "react";
 
-export function AuthPage({ type = "login", onAuth, onNav }) {
-  const [formType, setFormType] = useState(type);
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [isTypingPassword, setIsTypingPassword] = useState(false);
-  const characterRefs = useRef([]);
+// ─── Reusable Character SVG ───────────────────────────────────────────────────
+// eyeState: "open" | "closed"
+function Character({ id, skin, hair, shirt, eyeColor, eyeState = "open", size = 110 }) {
+  const w = size;
+  const h = Math.round(size * 1.6);
+  const s = size / 110; // scale factor vs 110px baseline
 
-  const isSignup = formType === "signup";
+  const sc = (n) => n * s;
 
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      setCursorPos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+  const headCX = sc(55);
+  const headCY = h - sc(85);
+  const eyeBaseY = h - sc(85);
+  const lx = sc(38);
+  const rx = sc(72);
+  const eyeR = sc(13);
+  const irisR = sc(8);
+  const pupilR = sc(4.5);
 
-  useEffect(() => {
-    const updateEyePositions = () => {
-      characterRefs.current.forEach((charEl, idx) => {
-        if (!charEl) return;
-        const rect = charEl.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const dx = cursorPos.x - centerX;
-        
-        if (isTypingPassword) {
-          const centers = [
-            { l: 38, r: 72 },
-            { l: 40, r: 80 },
-            { l: 46, r: 94 },
-            { l: 48, r: 82 },
-            { l: 40, r: 84 },
-            { l: 40, r: 74 },
-          ];
-          const leftIris = document.getElementById(`c${idx + 1}-li`);
-          const leftPupil = document.getElementById(`c${idx + 1}-lp`);
-          const rightIris = document.getElementById(`c${idx + 1}-ri`);
-          const rightPupil = document.getElementById(`c${idx + 1}-rp`);
-          if (leftIris && centers[idx]) {
-            leftIris.setAttribute("cx", String(centers[idx].l));
-            leftPupil.setAttribute("cx", String(centers[idx].l));
-          }
-          if (rightIris && centers[idx]) {
-            rightIris.setAttribute("cx", String(centers[idx].r));
-            rightPupil.setAttribute("cx", String(centers[idx].r));
-          }
-          return;
-        }
-        
-        const max = 5;
-        const offsetX = Math.max(-max, Math.min(max, dx / 25));
-        
-        const centers = [
-          { l: 38, r: 72 },
-          { l: 40, r: 80 },
-          { l: 46, r: 94 },
-          { l: 48, r: 82 },
-          { l: 40, r: 84 },
-          { l: 40, r: 74 },
-        ];
-        const leftIris = document.getElementById(`c${idx + 1}-li`);
-        const leftPupil = document.getElementById(`c${idx + 1}-lp`);
-        const rightIris = document.getElementById(`c${idx + 1}-ri`);
-        const rightPupil = document.getElementById(`c${idx + 1}-rp`);
-        if (leftIris && centers[idx]) {
-          leftIris.setAttribute("cx", String(centers[idx].l + offsetX));
-          leftPupil.setAttribute("cx", String(centers[idx].l + offsetX));
-        }
-        if (rightIris && centers[idx]) {
-          rightIris.setAttribute("cx", String(centers[idx].r + offsetX));
-          rightPupil.setAttribute("cx", String(centers[idx].r + offsetX));
-        }
-      });
-    };
-    updateEyePositions();
-  }, [cursorPos, isTypingPassword]);
-
-  const handlePasswordChange = (e) => {
-    setPass(e.target.value);
-    setIsTypingPassword(e.target.value.length > 0);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email || !pass || (isSignup && !name)) return;
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    onAuth({ email, name: isSignup ? name : undefined, id: "user_" + Date.now() });
-  };
-
-  const togglePass = (inputId, btn) => {
-    const input = document.getElementById(inputId);
-    if (input.type === "password") {
-      input.type = "text";
-      btn.textContent = "Hide";
-    } else {
-      input.type = "password";
-      btn.textContent = "Show";
-    }
-  };
+  const closed = eyeState === "closed";
 
   return (
-    <div className="auth-page">
-      <div className="auth-logo">
-        <div className="logo-dot"></div>
-        TribeSpace
-      </div>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
+      {/* shirt/body */}
+      <ellipse cx={headCX} cy={h - sc(25)} rx={sc(38)} ry={sc(28)} fill={shirt} />
+      {/* neck */}
+      <rect x={headCX - sc(9)} y={h - sc(65)} width={sc(18)} height={sc(16)} rx={sc(6)} fill={skin} />
+      {/* head */}
+      <ellipse cx={headCX} cy={headCY} rx={sc(38)} ry={sc(40)} fill={skin} />
+      {/* hair */}
+      <ellipse cx={headCX} cy={h - sc(120)} rx={sc(40)} ry={sc(21)} fill={hair} />
+      {/* ears */}
+      <ellipse cx={sc(17)} cy={headCY} rx={sc(8)} ry={sc(10)} fill={skin} />
+      <ellipse cx={w - sc(17)} cy={headCY} rx={sc(8)} ry={sc(10)} fill={skin} />
 
-      <div className="auth-card">
-        <div className="tabs">
-          <div 
-            className={`tab ${formType === "login" ? "active" : ""}`} 
-            id="tab-login" 
-            onClick={() => setFormType("login")}
-          >
-            Log In
-          </div>
-          <div 
-            className={`tab ${formType === "signup" ? "active" : ""}`} 
-            id="tab-signup" 
-            onClick={() => setFormType("signup")}
-          >
-            Sign Up
-          </div>
-        </div>
+      {/* LEFT EYE */}
+      <circle cx={lx} cy={eyeBaseY} r={eyeR} fill="white" />
+      {closed ? (
+        <path
+          d={`M ${lx - eyeR} ${eyeBaseY} Q ${lx} ${eyeBaseY + eyeR * 0.85} ${lx + eyeR} ${eyeBaseY}`}
+          stroke={hair} strokeWidth={sc(2.5)} fill={skin} strokeLinecap="round"
+        />
+      ) : (
+        <>
+          <circle id={`${id}-li`} cx={lx} cy={eyeBaseY} r={irisR} fill={eyeColor} />
+          <circle id={`${id}-lp`} cx={lx} cy={eyeBaseY} r={pupilR} fill="#111" />
+          <circle cx={lx - sc(2)} cy={eyeBaseY - sc(2)} r={sc(2)} fill="white" />
+        </>
+      )}
 
-        {formType === "login" ? (
-          <div id="login-view">
-            <div className="auth-title">Welcome back 👋</div>
-            <div className="auth-sub">Log in to reconnect with your tribe.</div>
+      {/* RIGHT EYE */}
+      <circle cx={rx} cy={eyeBaseY} r={eyeR} fill="white" />
+      {closed ? (
+        <path
+          d={`M ${rx - eyeR} ${eyeBaseY} Q ${rx} ${eyeBaseY + eyeR * 0.85} ${rx + eyeR} ${eyeBaseY}`}
+          stroke={hair} strokeWidth={sc(2.5)} fill={skin} strokeLinecap="round"
+        />
+      ) : (
+        <>
+          <circle id={`${id}-ri`} cx={rx} cy={eyeBaseY} r={irisR} fill={eyeColor} />
+          <circle id={`${id}-rp`} cx={rx} cy={eyeBaseY} r={pupilR} fill="#111" />
+          <circle cx={rx - sc(2)} cy={eyeBaseY - sc(2)} r={sc(2)} fill="white" />
+        </>
+      )}
 
-            <div className="field">
-              <label>Email</label>
-              <input 
-                type="email" 
-                id="login-email" 
-                placeholder="you@example.com" 
-                autocomplete="off"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label>Password</label>
-              <div className="pass-wrap">
-                <input 
-                  type="password" 
-                  id="login-pass" 
-                  placeholder="••••••••"
-                  value={pass}
-                  onChange={handlePasswordChange}
-                />
-                <button className="pass-toggle" onClick={(e) => togglePass('login-pass', e.target)}>Show</button>
-              </div>
-            </div>
+      {/* eyebrows */}
+      <path d={`M ${lx-sc(10)} ${eyeBaseY-sc(14)} Q ${lx} ${eyeBaseY-sc(18)} ${lx+sc(10)} ${eyeBaseY-sc(13)}`}
+        stroke={hair} strokeWidth={sc(2.2)} fill="none" strokeLinecap="round" />
+      <path d={`M ${rx-sc(10)} ${eyeBaseY-sc(13)} Q ${rx} ${eyeBaseY-sc(18)} ${rx+sc(10)} ${eyeBaseY-sc(14)}`}
+        stroke={hair} strokeWidth={sc(2.2)} fill="none" strokeLinecap="round" />
 
-            <div className="row-opt">
-              <label className="remember">
-                <input type="checkbox"/> Remember me
-              </label>
-              <span className="forgot">Forgot password?</span>
-            </div>
+      {/* nose */}
+      <ellipse cx={headCX} cy={eyeBaseY + sc(12)} rx={sc(4.5)} ry={sc(3.5)}
+        fill={skin === "#f5c5a3" ? "#e8a882" : skin === "#c68642" ? "#a05830" : skin === "#4a2040" ? "#3a1030" : "#d4906a"} />
 
-            <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
-              {loading ? "..." : "Log In →"}
-            </button>
-            <div className="divider">or</div>
-            <button className="btn-google" onClick={() => onAuth({ email: "google", id: "google_" + Date.now() })}>
-              <svg width="18" height="18" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-              </svg>
-              Continue with Google
-            </button>
-
-            <div className="switch-text">
-              Don't have an account? <a onClick={() => setFormType("signup")}>Sign up free</a>
-            </div>
-          </div>
-        ) : (
-          <div id="signup-view">
-            <div className="auth-title">Join the tribe ✨</div>
-            <div className="auth-sub">Create your account and find your people.</div>
-
-            <div className="field">
-              <label>Full Name</label>
-              <input 
-                type="text" 
-                placeholder="Alex Johnson" 
-                autocomplete="off"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label>Email</label>
-              <input 
-                type="email" 
-                placeholder="you@example.com" 
-                autocomplete="off"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label>Password</label>
-              <div className="pass-wrap">
-                <input 
-                  type="password" 
-                  id="signup-pass" 
-                  placeholder="Min. 8 characters"
-                  value={pass}
-                  onChange={handlePasswordChange}
-                />
-                <button className="pass-toggle" onClick={(e) => togglePass('signup-pass', e.target)}>Show</button>
-              </div>
-            </div>
-
-            <button className="btn-primary" style={{marginTop:6}} onClick={handleSubmit} disabled={loading}>
-              {loading ? "..." : "Create Account →"}
-            </button>
-            <div className="divider">or</div>
-            <button className="btn-google" onClick={() => onAuth({ email: "google", id: "google_" + Date.now() })}>
-              <svg width="18" height="18" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-              </svg>
-              Sign up with Google
-            </button>
-            <div className="switch-text">
-              Already have an account? <a onClick={() => setFormType("login")}>Log in</a>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div id="characters-stage">
-        <div className="char-wrap" ref={el => characterRefs.current[0] = el} style={{left:"1%",transform:"scale(0.65) rotate(-10deg)",zIndex:1}}>
-          <svg width="110" height="180" viewBox="0 0 110 180">
-            <ellipse cx="55" cy="155" rx="38" ry="28" fill="#26c6da"/>
-            <rect x="46" y="115" width="18" height="16" rx="6" fill="#f5c5a3"/>
-            <ellipse cx="55" cy="95" rx="38" ry="40" fill="#f5c5a3"/>
-            <circle cx="25" cy="72" r="18" fill="#3e1f00"/>
-            <circle cx="38" cy="58" r="17" fill="#3e1f00"/>
-            <circle cx="55" cy="55" r="17" fill="#4a2600"/>
-            <circle cx="72" cy="58" r="17" fill="#3e1f00"/>
-            <circle cx="84" cy="72" r="16" fill="#3e1f00"/>
-            <circle cx="22" cy="88" r="14" fill="#3e1f00"/>
-            <circle cx="88" cy="88" r="14" fill="#3e1f00"/>
-            <ellipse cx="17" cy="97" rx="8" ry="10" fill="#f5c5a3"/>
-            <ellipse cx="93" cy="97" rx="8" ry="10" fill="#f5c5a3"/>
-            <g>
-              <circle cx="38" cy="95" r="13" fill="white"/>
-              <circle id="c1-li" cx="38" cy="95" r="8" fill="#3b6ef8"/>
-              <circle id="c1-lp" cx="38" cy="95" r="4.5" fill="#111"/>
-              <circle cx="35" cy="92" r="2" fill="white"/>
-              <circle cx="72" cy="95" r="13" fill="white"/>
-              <circle id="c1-ri" cx="72" cy="95" r="8" fill="#3b6ef8"/>
-              <circle id="c1-rp" cx="72" cy="95" r="4.5" fill="#111"/>
-              <circle cx="69" cy="92" r="2" fill="white"/>
-            </g>
-            <path d="M 28 83 Q 38 78 48 83" stroke="#3e1f00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <path d="M 62 83 Q 72 78 82 83" stroke="#3e1f00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="55" cy="107" rx="5" ry="4" fill="#e8a882"/>
-            <path d="M 42 118 Q 55 128 68 118" stroke="#c07050" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <path d="M 93 140 Q 108 120 105 100 Q 103 88 95 82" stroke="#26c6da" strokeWidth="14" fill="none" strokeLinecap="round"/>
-            <circle cx="94" cy="80" r="11" fill="#f5c5a3"/>
-          </svg>
-        </div>
-
-        <div className="char-wrap" ref={el => characterRefs.current[1] = el} style={{left:"12%",transform:"scale(0.75) rotate(-5deg)",zIndex:2}}>
-          <svg width="120" height="190" viewBox="0 0 120 190">
-            <ellipse cx="60" cy="165" rx="42" ry="28" fill="#e67e22"/>
-            <rect x="50" y="123" width="20" height="16" rx="6" fill="#c68642"/>
-            <ellipse cx="60" cy="103" rx="42" ry="44" fill="#c68642"/>
-            <ellipse cx="60" cy="65" rx="42" ry="22" fill="#1a0a00"/>
-            <ellipse cx="20" cy="88" rx="14" ry="20" fill="#1a0a00"/>
-            <ellipse cx="100" cy="88" rx="14" ry="20" fill="#1a0a00"/>
-            <ellipse cx="18" cy="105" rx="9" ry="11" fill="#c68642"/>
-            <ellipse cx="102" cy="105" rx="9" ry="11" fill="#c68642"/>
-            <g>
-              <circle cx="40" cy="103" r="14" fill="white"/>
-              <circle id="c2-li" cx="40" cy="103" r="8.5" fill="#6b3a00"/>
-              <circle id="c2-lp" cx="40" cy="103" r="5" fill="#111"/>
-              <circle cx="37" cy="100" r="2.2" fill="white"/>
-              <circle cx="80" cy="103" r="14" fill="white"/>
-              <circle id="c2-ri" cx="80" cy="103" r="8.5" fill="#6b3a00"/>
-              <circle id="c2-rp" cx="80" cy="103" r="5" fill="#111"/>
-              <circle cx="77" cy="100" r="2.2" fill="white"/>
-            </g>
-            <rect x="24" y="90" width="32" height="27" rx="10" fill="none" stroke="#222" strokeWidth="3"/>
-            <rect x="64" y="90" width="32" height="27" rx="10" fill="none" stroke="#222" strokeWidth="3"/>
-            <line x1="56" y1="103" x2="64" y2="103" stroke="#222" strokeWidth="2.5"/>
-            <line x1="10" y1="98" x2="24" y2="98" stroke="#222" strokeWidth="2.5"/>
-            <line x1="96" y1="98" x2="110" y2="98" stroke="#222" strokeWidth="2.5"/>
-            <path d="M 28 88 Q 40 82 52 87" stroke="#1a0a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <path d="M 68 87 Q 80 82 92 88" stroke="#1a0a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="60" cy="117" rx="5" ry="4" fill="#a05830"/>
-            <path d="M 47 128 Q 60 140 73 128" stroke="#8b4513" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-          </svg>
-        </div>
-
-        <div className="char-wrap" ref={el => characterRefs.current[2] = el} style={{left:"30%",transform:"translateX(-50%) scale(0.95)",zIndex:5}}>
-          <svg width="140" height="210" viewBox="0 0 140 210">
-            <ellipse cx="70" cy="185" rx="50" ry="30" fill="#9b59b6"/>
-            <rect x="58" y="140" width="24" height="20" rx="7" fill="#4a2040"/>
-            <ellipse cx="70" cy="118" rx="50" ry="52" fill="#4a2040"/>
-            <circle cx="26" cy="88" r="22" fill="#1a0a00"/>
-            <circle cx="42" cy="68" r="22" fill="#1a0a00"/>
-            <circle cx="70" cy="62" r="22" fill="#1a0a00"/>
-            <circle cx="98" cy="68" r="22" fill="#1a0a00"/>
-            <circle cx="114" cy="88" r="20" fill="#1a0a00"/>
-            <circle cx="20" cy="108" r="16" fill="#1a0a00"/>
-            <circle cx="120" cy="108" r="16" fill="#1a0a00"/>
-            <ellipse cx="20" cy="120" rx="10" ry="13" fill="#4a2040"/>
-            <ellipse cx="120" cy="120" rx="10" ry="13" fill="#4a2040"/>
-            <g>
-              <circle cx="46" cy="118" r="17" fill="white"/>
-              <circle id="c3-li" cx="46" cy="118" r="10" fill="#e91e63"/>
-              <circle id="c3-lp" cx="46" cy="118" r="5.5" fill="#111"/>
-              <circle cx="42" cy="113" r="2.5" fill="white"/>
-              <circle cx="94" cy="118" r="17" fill="white"/>
-              <circle id="c3-ri" cx="94" cy="118" r="10" fill="#e91e63"/>
-              <circle id="c3-rp" cx="94" cy="118" r="5.5" fill="#111"/>
-              <circle cx="90" cy="113" r="2.5" fill="white"/>
-            </g>
-            <rect x="26" y="104" width="40" height="30" rx="12" fill="none" stroke="#f06292" strokeWidth="3.5"/>
-            <rect x="74" y="104" width="40" height="30" rx="12" fill="none" stroke="#f06292" strokeWidth="3.5"/>
-            <line x1="66" y1="118" x2="74" y2="118" stroke="#f06292" strokeWidth="3"/>
-            <path d="M 30 102 Q 46 95 62 102" stroke="#2a1020" strokeWidth="3" fill="none" strokeLinecap="round"/>
-            <path d="M 78 102 Q 94 95 110 102" stroke="#2a1020" strokeWidth="3" fill="none" strokeLinecap="round"/>
-            <ellipse cx="70" cy="136" rx="6" ry="5" fill="#3a1030"/>
-            <path d="M 55 150 Q 70 164 85 150" stroke="#7b1fa2" strokeWidth="3" fill="none" strokeLinecap="round"/>
-            <path d="M 52 150 Q 70 168 88 150" fill="white" stroke="#ddd" strokeWidth="1"/>
-          </svg>
-        </div>
-
-        <div className="char-wrap" ref={el => characterRefs.current[3] = el} style={{left:"50%",transform:"translateX(-50%) scale(1.1)",zIndex:7}}>
-          <svg width="130" height="220" viewBox="0 0 130 220">
-            <ellipse cx="65" cy="195" rx="45" ry="30" fill="#7c4dff"/>
-            <rect x="54" y="145" width="22" height="18" rx="6" fill="#8d6e63"/>
-            <ellipse cx="65" cy="120" rx="42" ry="45" fill="#8d6e63"/>
-            <ellipse cx="65" cy="75" rx="40" ry="25" fill="#2d1b69"/>
-            <ellipse cx="20" cy="100" rx="12" ry="18" fill="#2d1b69"/>
-            <ellipse cx="110" cy="100" rx="12" ry="18" fill="#2d1b69"/>
-            <ellipse cx="20" cy="122" rx="8" ry="11" fill="#8d6e63"/>
-            <ellipse cx="110" cy="122" rx="8" ry="11" fill="#8d6e63"/>
-            <g>
-              <circle cx="48" cy="120" r="15" fill="white"/>
-              <circle id="c4-li" cx="48" cy="120" r="9" fill="#4caf50"/>
-              <circle id="c4-lp" cx="48" cy="120" r="5" fill="#111"/>
-              <circle cx="45" cy="116" r="2.5" fill="white"/>
-              <circle cx="82" cy="120" r="15" fill="white"/>
-              <circle id="c4-ri" cx="82" cy="120" r="9" fill="#4caf50"/>
-              <circle id="c4-rp" cx="82" cy="120" r="5" fill="#111"/>
-              <circle cx="79" cy="116" r="2.5" fill="white"/>
-            </g>
-            <path d="M 35 105 Q 48 98 61 105" stroke="#2d1b69" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <path d="M 69 105 Q 82 98 95 105" stroke="#2d1b69" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="65" cy="135" rx="5" ry="4" fill="#6d4c41"/>
-            <path d="M 52 148 Q 65 160 78 148" stroke="#5d4037" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="30" cy="180" rx="12" ry="20" fill="#7c4dff"/>
-            <ellipse cx="100" cy="180" rx="12" ry="20" fill="#7c4dff"/>
-          </svg>
-        </div>
-
-        <div className="char-wrap" ref={el => characterRefs.current[4] = el} style={{right:"28%",transform:"scale(0.8) rotate(4deg)",zIndex:3}}>
-          <svg width="125" height="195" viewBox="0 0 125 195">
-            <ellipse cx="62" cy="170" rx="44" ry="28" fill="#ff7043"/>
-            <rect x="52" y="128" width="20" height="18" rx="6" fill="#fde0c0"/>
-            <ellipse cx="62" cy="108" rx="44" ry="46" fill="#fde0c0"/>
-            <ellipse cx="62" cy="70" rx="46" ry="22" fill="#ff7043"/>
-            <ellipse cx="62" cy="62" rx="44" ry="18" fill="#ff7043"/>
-            <ellipse cx="62" cy="56" rx="36" ry="14" fill="#e64a19"/>
-            <path d="M 16 70 Q 62 80 108 70" fill="#ff7043" stroke="#e64a19" strokeWidth="1"/>
-            <path d="M 16 70 Q 0 72 2 66" fill="#ff7043"/>
-            <ellipse cx="18" cy="110" rx="9" ry="11" fill="#fde0c0"/>
-            <ellipse cx="106" cy="110" rx="9" ry="11" fill="#fde0c0"/>
-            <g>
-              <circle cx="40" cy="108" r="14" fill="white"/>
-              <circle id="c5-li" cx="40" cy="108" r="8.5" fill="#43a047"/>
-              <circle id="c5-lp" cx="40" cy="108" r="5" fill="#111"/>
-              <circle cx="37" cy="104" r="2" fill="white"/>
-              <circle cx="84" cy="108" r="14" fill="white"/>
-              <circle id="c5-ri" cx="84" cy="108" r="8.5" fill="#43a047"/>
-              <circle id="c5-rp" cx="84" cy="108" r="5" fill="#111"/>
-              <circle cx="81" cy="104" r="2" fill="white"/>
-            </g>
-            <path d="M 28 93 Q 40 87 52 93" stroke="#c08040" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <path d="M 72 93 Q 84 87 96 93" stroke="#c08040" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="62" cy="120" rx="5" ry="4" fill="#e8a882"/>
-            <path d="M 50 132 Q 62 144 74 132" stroke="#c07050" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-          </svg>
-        </div>
-
-        <div className="char-wrap" ref={el => characterRefs.current[5] = el} style={{right:"3%",transform:"scale(0.68) rotate(8deg)",zIndex:1}}>
-          <svg width="115" height="185" viewBox="0 0 115 185">
-            <ellipse cx="57" cy="160" rx="40" ry="28" fill="#4caf50"/>
-            <rect x="48" y="120" width="18" height="16" rx="6" fill="#ffccbc"/>
-            <ellipse cx="57" cy="100" rx="38" ry="40" fill="#ffccbc"/>
-            <ellipse cx="57" cy="62" rx="38" ry="22" fill="#d84315"/>
-            <circle cx="25" cy="70" r="16" fill="#d84315"/>
-            <circle cx="38" cy="55" r="15" fill="#bf360c"/>
-            <circle cx="57" cy="50" r="16" fill="#d84315"/>
-            <circle cx="76" cy="55" r="15" fill="#bf360c"/>
-            <circle cx="89" cy="70" r="14" fill="#d84315"/>
-            <ellipse cx="18" cy="102" rx="8" ry="10" fill="#ffccbc"/>
-            <ellipse cx="96" cy="102" rx="8" ry="10" fill="#ffccbc"/>
-            <g>
-              <circle cx="40" cy="100" r="12" fill="white"/>
-              <circle id="c6-li" cx="40" cy="100" r="7" fill="#ff9800"/>
-              <circle id="c6-lp" cx="40" cy="100" r="4" fill="#111"/>
-              <circle cx="37" cy="97" r="2" fill="white"/>
-              <circle cx="74" cy="100" r="12" fill="white"/>
-              <circle id="c6-ri" cx="74" cy="100" r="7" fill="#ff9800"/>
-              <circle id="c6-rp" cx="74" cy="100" r="4" fill="#111"/>
-              <circle cx="71" cy="97" r="2" fill="white"/>
-            </g>
-            <path d="M 30 88 Q 40 83 50 88" stroke="#bf360c" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <path d="M 64 88 Q 74 83 84 88" stroke="#bf360c" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-            <ellipse cx="57" cy="112" rx="5" ry="4" fill="#e8a882"/>
-            <path d="M 45 122 Q 57 132 69 122" stroke="#c07050" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-          </svg>
-        </div>
-      </div>
-
-      <style>{`
-        .auth-page {
-          width: 100vw;
-          height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-start;
-          padding-top: 36px;
-          position: relative;
-          overflow: hidden;
-          background: #f7f8fc;
-          font-family: 'Outfit', sans-serif;
-        }
-        .auth-logo {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 1.15rem;
-          font-weight: 800;
-          color: #0f0f14;
-          letter-spacing: -0.5px;
-          margin-bottom: 28px;
-          z-index: 20;
-        }
-        .logo-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          background: #3b6ef8;
-        }
-        .auth-card {
-          background: #ffffff;
-          border-radius: 24px;
-          padding: 36px 40px 32px;
-          width: 400px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 20px 60px rgba(0,0,0,0.08);
-          position: relative;
-          z-index: 20;
-        }
-        .tabs {
-          display: flex;
-          background: #f7f8fc;
-          border-radius: 12px;
-          padding: 4px;
-          margin-bottom: 26px;
-        }
-        .tab {
-          flex: 1;
-          padding: 9px 0;
-          text-align: center;
-          font-size: 0.88rem;
-          font-weight: 600;
-          color: #6b7280;
-          border-radius: 9px;
-          cursor: pointer;
-          transition: all 0.25s;
-          user-select: none;
-        }
-        .tab.active {
-          background: #ffffff;
-          color: #0f0f14;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        .auth-title {
-          font-family: 'DM Serif Display', serif;
-          font-size: 1.6rem;
-          color: #0f0f14;
-          margin-bottom: 4px;
-          line-height: 1.2;
-        }
-        .auth-sub {
-          font-size: 0.82rem;
-          color: #6b7280;
-          margin-bottom: 24px;
-        }
-        .field {
-          margin-bottom: 14px;
-        }
-        .field label {
-          display: block;
-          font-size: 0.78rem;
-          font-weight: 600;
-          color: #0f0f14;
-          margin-bottom: 6px;
-          letter-spacing: 0.2px;
-        }
-        .field input {
-          width: 100%;
-          padding: 12px 16px;
-          border: 1.5px solid #e5e7eb;
-          border-radius: 12px;
-          font-family: 'Outfit', sans-serif;
-          font-size: 0.9rem;
-          color: #0f0f14;
-          background: #ffffff;
-          outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          box-sizing: border-box;
-        }
-        .field input:focus {
-          border-color: #3b6ef8;
-          box-shadow: 0 0 0 4px rgba(59,110,248,0.1);
-        }
-        .field input::placeholder {
-          color: #c0c4cc;
-        }
-        .pass-wrap {
-          position: relative;
-        }
-        .pass-toggle {
-          position: absolute;
-          right: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #6b7280;
-          font-size: 0.75rem;
-          font-family: 'Outfit', sans-serif;
-          font-weight: 500;
-        }
-        .row-opt {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
-          font-size: 0.78rem;
-        }
-        .remember {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          color: #6b7280;
-          cursor: pointer;
-        }
-        .remember input {
-          width: auto;
-          padding: 0;
-          border: none;
-          box-shadow: none;
-          accent-color: #3b6ef8;
-        }
-        .forgot {
-          color: #3b6ef8;
-          font-weight: 600;
-          cursor: pointer;
-        }
-        .btn-primary {
-          width: 100%;
-          padding: 14px;
-          background: #0f0f14;
-          color: #ffffff;
-          border: none;
-          border-radius: 14px;
-          font-family: 'Outfit', sans-serif;
-          font-size: 0.95rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: background 0.2s, transform 0.15s;
-          margin-bottom: 14px;
-          letter-spacing: 0.3px;
-        }
-        .btn-primary:hover:not(:disabled) {
-          background: #1e2030;
-          transform: translateY(-1px);
-        }
-        .btn-primary:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-        .divider {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 0.75rem;
-          color: #c0c4cc;
-          margin-bottom: 14px;
-        }
-        .divider::before, .divider::after {
-          content: '';
-          flex: 1;
-          height: 1px;
-          background: #e5e7eb;
-        }
-        .btn-google {
-          width: 100%;
-          padding: 12px;
-          border: 1.5px solid #e5e7eb;
-          border-radius: 14px;
-          background: #ffffff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          font-family: 'Outfit', sans-serif;
-          font-size: 0.88rem;
-          font-weight: 600;
-          color: #0f0f14;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .btn-google:hover {
-          background: #f7f8fc;
-        }
-        .switch-text {
-          text-align: center;
-          font-size: 0.8rem;
-          color: #6b7280;
-          margin-top: 16px;
-        }
-        .switch-text a {
-          color: #3b6ef8;
-          font-weight: 700;
-          cursor: pointer;
-          text-decoration: none;
-        }
-        #characters-stage {
-          position: absolute;
-          bottom: -20px;
-          left: 0;
-          right: 0;
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-          height: 240px;
-          pointer-events: none;
-          z-index: 10;
-        }
-        .char-wrap {
-          position: absolute;
-          bottom: 0;
-          transform-origin: bottom center;
-          transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
-        }
-      `}</style>
-    </div>
+      {/* mouth */}
+      {closed ? (
+        <path d={`M ${headCX-sc(9)} ${eyeBaseY+sc(25)} L ${headCX+sc(9)} ${eyeBaseY+sc(25)}`}
+          stroke="#b06050" strokeWidth={sc(2)} fill="none" strokeLinecap="round" />
+      ) : (
+        <path d={`M ${headCX-sc(12)} ${eyeBaseY+sc(23)} Q ${headCX} ${eyeBaseY+sc(32)} ${headCX+sc(12)} ${eyeBaseY+sc(23)}`}
+          stroke="#c07050" strokeWidth={sc(2.5)} fill="none" strokeLinecap="round" />
+      )}
+    </svg>
   );
 }
 
+const CHARS = [
+  { id:"c1",  skin:"#f5c5a3", hair:"#3e1f00", shirt:"#26c6da", eyeColor:"#3b6ef8"  },
+  { id:"c2",  skin:"#c68642", hair:"#1a0a00", shirt:"#e67e22", eyeColor:"#6b3a00"  },
+  { id:"c3",  skin:"#4a2040", hair:"#1a0a00", shirt:"#9b59b6", eyeColor:"#e91e63"  },
+  { id:"c4",  skin:"#fde0c0", hair:"#c08040", shirt:"#ff7043", eyeColor:"#43a047"  },
+  { id:"c5",  skin:"#ffe0b2", hair:"#bf360c", shirt:"#ef5350", eyeColor:"#1565c0"  },
+  { id:"c6",  skin:"#d7a87a", hair:"#4e342e", shirt:"#66bb6a", eyeColor:"#00796b"  },
+  { id:"c7",  skin:"#ffd5b8", hair:"#212121", shirt:"#5c6bc0", eyeColor:"#6a1b9a"  },
+  { id:"c8",  skin:"#c09060", hair:"#3e2723", shirt:"#ab47bc", eyeColor:"#ff6f00"  },
+  { id:"c9",  skin:"#ffe5d0", hair:"#ffa000", shirt:"#26a69a", eyeColor:"#c62828"  },
+  { id:"c10", skin:"#8d5524", hair:"#1b0000", shirt:"#ec407a", eyeColor:"#2e7d32"  },
+  { id:"c11", skin:"#f8d5c0", hair:"#6d4c41", shirt:"#ffa726", eyeColor:"#0288d1"  },
+  { id:"c12", skin:"#e8b89a", hair:"#37474f", shirt:"#78909c", eyeColor:"#558b2f"  },
+];
+
+// 12 positions surrounding the card — top(4), sides(4), bottom(4)
+const POSITIONS = [
+  // ── TOP 4 ──
+  { style:{ top:20, left:"6%"      }, rotate:-10, scale:0.70, size:120 },
+  { style:{ top:5,  left:"18%"     }, rotate: 6,  scale:0.76, size:125 },
+  { style:{ top:8,  right:"18%"    }, rotate:-5,  scale:0.74, size:122 },
+  { style:{ top:22, right:"6%"     }, rotate: 12, scale:0.68, size:118 },
+  // ── LEFT 2 ──
+  { style:{ top:"28%", left:"0%"   }, rotate:-18, scale:0.72, size:115 },
+  { style:{ top:"54%", left:"1%"   }, rotate: 10, scale:0.68, size:110 },
+  // ── RIGHT 2 ──
+  { style:{ top:"30%", right:"0%"  }, rotate: 16, scale:0.74, size:115 },
+  { style:{ top:"55%", right:"1%"  }, rotate:-12, scale:0.70, size:112 },
+  // ── BOTTOM 4 ──
+  { style:{ bottom:0, left:"3%"    }, rotate: -9, scale:0.72, size:145 },
+  { style:{ bottom:0, left:"17%"   }, rotate: -4, scale:0.84, size:155 },
+  { style:{ bottom:0, right:"17%"  }, rotate:  5, scale:0.82, size:152 },
+  { style:{ bottom:0, right:"3%"   }, rotate: 10, scale:0.70, size:142 },
+];
+
+const INPUT_STYLE = {
+  width: "100%",
+  padding: "12px 16px",
+  border: "1.5px solid #e5e7eb",
+  borderRadius: 12,
+  fontSize: "0.9rem",
+  color: "#0f0f14",
+  background: "#ffffff",
+  outline: "none",
+  transition: "border-color 0.2s, box-shadow 0.2s",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+};
+
+export function AuthPage({ type = "login", onAuth, onNav }) {
+  const [formType,        setFormType]        = useState(type);
+  const [email,           setEmail]           = useState("");
+  const [pass,            setPass]            = useState("");
+  const [name,            setName]            = useState("");
+  const [loading,         setLoading]         = useState(false);
+  const [showPass,        setShowPass]        = useState(false);
+  const [passFocused,     setPassFocused]     = useState(false);
+  const [blinking,        setBlinking]        = useState(false);
+  const [cursor,          setCursor]          = useState({ x: 0, y: 0 });
+  const charRefs = useRef([]);
+
+  const isSignup = formType === "signup";
+
+  // cursor tracking
+  useEffect(() => {
+    const h = (e) => setCursor({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", h);
+    return () => window.removeEventListener("mousemove", h);
+  }, []);
+
+  // random blink (skip when password focused — eyes already closed)
+  useEffect(() => {
+    let t;
+    const schedule = () => {
+      t = setTimeout(() => {
+        if (!passFocused) {
+          setBlinking(true);
+          setTimeout(() => { setBlinking(false); schedule(); }, 130);
+        } else {
+          schedule();
+        }
+      }, 1800 + Math.random() * 2800);
+    };
+    schedule();
+    return () => clearTimeout(t);
+  }, [passFocused]);
+
+  // pupil tracking
+  useEffect(() => {
+    if (passFocused) return;
+    charRefs.current.forEach((el, idx) => {
+      if (!el) return;
+      const cfg = CHARS[idx];
+      const pos = POSITIONS[idx];
+      const rect = el.getBoundingClientRect();
+      const elCX = rect.left + rect.width  / 2;
+      const elCY = rect.top  + rect.height / 2;
+      const dx = cursor.x - elCX;
+      const dy = cursor.y - elCY;
+      const MAX = 4.5;
+      const ox = Math.max(-MAX, Math.min(MAX, dx / 30));
+      const oy = Math.max(-MAX, Math.min(MAX, dy / 30));
+
+      const sz = pos.size;
+      const sc = sz / 110;
+      const baseEyeY = sz * 1.6 - 85 * sc;
+      const lx = 38 * sc;
+      const rx = 72 * sc;
+
+      ["li","lp"].forEach(part => {
+        const el2 = document.getElementById(`${cfg.id}-${part}`);
+        if (el2) { el2.setAttribute("cx", lx + ox); el2.setAttribute("cy", baseEyeY + oy); }
+      });
+      ["ri","rp"].forEach(part => {
+        const el2 = document.getElementById(`${cfg.id}-${part}`);
+        if (el2) { el2.setAttribute("cx", rx + ox); el2.setAttribute("cy", baseEyeY + oy); }
+      });
+    });
+  }, [cursor, passFocused]);
+
+  const handleSubmit = async () => {
+    if (!email || !pass || (isSignup && !name)) return;
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+    onAuth({ email, name: isSignup ? name : undefined, id: "user_" + Date.now() });
+  };
+
+  const eyeState = (passFocused || blinking) ? "closed" : "open";
+
+  return (
+    <div style={{
+      width:"100vw", height:"100vh",
+      display:"flex", flexDirection:"column",
+      alignItems:"center", justifyContent:"flex-start",
+      paddingTop: 36,
+      position:"relative", overflow:"hidden",
+      background:"#eef0f7",
+      fontFamily:"'Outfit','Nunito',sans-serif",
+    }}>
+
+      {/* bg blobs */}
+      <div style={{ position:"absolute", top:-100, left:-100, width:360, height:360, borderRadius:"50%", background:"radial-gradient(circle,rgba(59,110,248,0.09) 0%,transparent 70%)", pointerEvents:"none" }}/>
+      <div style={{ position:"absolute", bottom:-80, right:-80, width:320, height:320, borderRadius:"50%", background:"radial-gradient(circle,rgba(233,30,99,0.07) 0%,transparent 70%)", pointerEvents:"none" }}/>
+
+      {/* Logo */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:"1.15rem", fontWeight:800, color:"#0f0f14", letterSpacing:"-0.5px", marginBottom:26, zIndex:20 }}>
+        <div style={{ width:10, height:10, borderRadius:"50%", background:"#3b6ef8" }}/>
+        TribeSpace
+      </div>
+
+      {/* ── 12 Characters scattered around ── */}
+      {CHARS.map((cfg, idx) => {
+        const pos = POSITIONS[idx];
+        return (
+          <div
+            key={cfg.id}
+            ref={el => charRefs.current[idx] = el}
+            style={{
+              position: "absolute",
+              zIndex: 8,
+              transformOrigin: "bottom center",
+              transform: `rotate(${pos.rotate}deg) scale(${pos.scale})`,
+              transition: "transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",
+              pointerEvents: "none",
+              ...pos.style,
+            }}
+          >
+            <Character
+              id={cfg.id}
+              skin={cfg.skin}
+              hair={cfg.hair}
+              shirt={cfg.shirt}
+              eyeColor={cfg.eyeColor}
+              eyeState={eyeState}
+              size={pos.size}
+            />
+          </div>
+        );
+      })}
+
+      {/* ── Auth Card ── */}
+      <div style={{
+        background:"#ffffff", borderRadius:24,
+        padding:"36px 40px 32px", width:400,
+        boxShadow:"0 4px 6px rgba(0,0,0,0.04), 0 20px 60px rgba(0,0,0,0.1)",
+        position:"relative", zIndex:20,
+      }}>
+
+        {/* Tabs */}
+        <div style={{ display:"flex", background:"#f7f8fc", borderRadius:12, padding:4, marginBottom:26 }}>
+          {[["login","Log In"],["signup","Sign Up"]].map(([t,label]) => (
+            <div key={t} onClick={() => setFormType(t)} style={{
+              flex:1, padding:"9px 0", textAlign:"center",
+              fontSize:"0.88rem", fontWeight:600, borderRadius:9, cursor:"pointer",
+              color: formType===t ? "#0f0f14" : "#6b7280",
+              background: formType===t ? "#ffffff" : "transparent",
+              boxShadow: formType===t ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+              transition:"all 0.25s", userSelect:"none",
+            }}>{label}</div>
+          ))}
+        </div>
+
+        {/* Heading */}
+        <div style={{ fontFamily:"'DM Serif Display',Georgia,serif", fontSize:"1.6rem", color:"#0f0f14", marginBottom:4, lineHeight:1.2 }}>
+          {isSignup ? "Join the tribe ✨" : "Welcome back 👋"}
+        </div>
+        <div style={{ fontSize:"0.82rem", color:"#6b7280", marginBottom:22 }}>
+          {isSignup ? "Create your account and find your people." : "Log in to reconnect with your tribe."}
+        </div>
+
+        {/* Name field (signup only) */}
+        {isSignup && (
+          <div style={{ marginBottom:14 }}>
+            <label style={{ display:"block", fontSize:"0.78rem", fontWeight:600, color:"#0f0f14", marginBottom:6 }}>Full Name</label>
+            <input type="text" placeholder="Alex Johnson" value={name}
+              onChange={e => setName(e.target.value)} style={INPUT_STYLE}
+              onFocus={e => { e.target.style.borderColor="#3b6ef8"; e.target.style.boxShadow="0 0 0 4px rgba(59,110,248,0.1)"; }}
+              onBlur={e => { e.target.style.borderColor="#e5e7eb"; e.target.style.boxShadow="none"; }}
+            />
+          </div>
+        )}
+
+        {/* Email */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ display:"block", fontSize:"0.78rem", fontWeight:600, color:"#0f0f14", marginBottom:6 }}>Email</label>
+          <input type="email" placeholder="you@example.com" value={email}
+            onChange={e => setEmail(e.target.value)} style={INPUT_STYLE}
+            onFocus={e => { e.target.style.borderColor="#3b6ef8"; e.target.style.boxShadow="0 0 0 4px rgba(59,110,248,0.1)"; }}
+            onBlur={e => { e.target.style.borderColor="#e5e7eb"; e.target.style.boxShadow="none"; }}
+          />
+        </div>
+
+        {/* Password */}
+        <div style={{ marginBottom: isSignup ? 8 : 4 }}>
+          <label style={{ display:"block", fontSize:"0.78rem", fontWeight:600, color:"#0f0f14", marginBottom:6 }}>Password</label>
+          <div style={{ position:"relative" }}>
+            <input
+              type={showPass ? "text" : "password"}
+              placeholder="Min. 8 characters"
+              value={pass}
+              onChange={e => setPass(e.target.value)}
+              onFocus={() => setPassFocused(true)}
+              onBlur={() => setPassFocused(false)}
+              style={{ ...INPUT_STYLE, paddingRight:56 }}
+            />
+            <button
+              onClick={() => setShowPass(v => !v)}
+              style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"#6b7280", fontSize:"0.75rem", fontFamily:"inherit", fontWeight:500 }}
+            >{showPass ? "Hide" : "Show"}</button>
+          </div>
+        </div>
+
+        {/* Remember / forgot (login only) */}
+        {!isSignup && (
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", margin:"12px 0 18px", fontSize:"0.78rem" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:6, color:"#6b7280", cursor:"pointer" }}>
+              <input type="checkbox" style={{ accentColor:"#3b6ef8" }}/> Remember me
+            </label>
+            <span style={{ color:"#3b6ef8", fontWeight:600, cursor:"pointer" }}>Forgot password?</span>
+          </div>
+        )}
+
+        {/* Primary CTA */}
+        <button
+          onClick={handleSubmit} disabled={loading}
+          style={{
+            width:"100%", padding:"14px",
+            background:"#0f0f14", color:"#ffffff",
+            border:"none", borderRadius:14,
+            fontFamily:"inherit", fontSize:"0.95rem", fontWeight:700,
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.7 : 1,
+            marginTop: isSignup ? 6 : 0,
+            marginBottom:14, letterSpacing:"0.3px",
+            transition:"background 0.2s, transform 0.15s",
+          }}
+          onMouseEnter={e => { if(!loading) e.currentTarget.style.transform="translateY(-1px)"; }}
+          onMouseLeave={e => e.currentTarget.style.transform="translateY(0)"}
+        >
+          {loading ? "…" : isSignup ? "Create Account →" : "Log In →"}
+        </button>
+
+        {/* Divider */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:"0.75rem", color:"#c0c4cc", marginBottom:14 }}>
+          <div style={{ flex:1, height:1, background:"#e5e7eb" }}/> or <div style={{ flex:1, height:1, background:"#e5e7eb" }}/>
+        </div>
+
+        {/* Google */}
+        <button
+          onClick={() => onAuth({ email:"google", id:"google_"+Date.now() })}
+          style={{ width:"100%", padding:"12px", border:"1.5px solid #e5e7eb", borderRadius:14, background:"#ffffff", display:"flex", alignItems:"center", justifyContent:"center", gap:10, fontFamily:"inherit", fontSize:"0.88rem", fontWeight:600, color:"#0f0f14", cursor:"pointer", transition:"background 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.background="#f7f8fc"}
+          onMouseLeave={e => e.currentTarget.style.background="#ffffff"}
+        >
+          <svg width="18" height="18" viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.29-8.16 2.29-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          {isSignup ? "Sign up with Google" : "Continue with Google"}
+        </button>
+
+        {/* Switch form */}
+        <div style={{ textAlign:"center", fontSize:"0.8rem", color:"#6b7280", marginTop:16 }}>
+          {isSignup ? "Already have an account? " : "Don't have an account? "}
+          <span onClick={() => setFormType(isSignup ? "login" : "signup")} style={{ color:"#3b6ef8", fontWeight:700, cursor:"pointer" }}>
+            {isSignup ? "Log in" : "Sign up free"}
+          </span>
+        </div>
+      </div>
+
+      {/* 🙈 hint when typing password */}
+      {passFocused && (
+        <div style={{
+          position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)",
+          background:"rgba(15,15,20,0.85)", color:"#fff",
+          padding:"9px 22px", borderRadius:99,
+          fontSize:13, fontWeight:600, whiteSpace:"nowrap",
+          backdropFilter:"blur(12px)", zIndex:100,
+          animation:"fadeSlideIn 0.3s ease",
+        }}>
+          🙈 They're covering their eyes! Your secret is safe.
+        </div>
+      )}
+    </div>
+  );
+}
