@@ -7,8 +7,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const GROQ_KEY = process.env.REACT_APP_ANTHROPIC_API_KEY;
-const IMAGE_KEY = process.env.REACT_APP_IMAGE_API_KEY;
+const GROQ_KEY = process.env.GROQ_API_KEY;
+const IMAGE_KEY = process.env.IMAGE_API_KEY;
 
 // ── Groq proxy ──────────────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
