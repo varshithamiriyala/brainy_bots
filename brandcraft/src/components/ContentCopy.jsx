@@ -3,7 +3,7 @@ import { callAIJSON } from "../utils/api";
 import { SkeletonCard, OutputActions, GenerateMorePanel, ToolSection } from "./UI";
 
 // ─── Ad Copy ───────────────────────────────────────────────────────────────────
-export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite }) {
+export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [platform, setPlatform] = useState("Instagram");
   const [goal, setGoal] = useState("Awareness");
   const [rounds, setRounds] = useState([]);
@@ -48,7 +48,7 @@ export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite }) {
                 <div key={i} className="card output-card">
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: "var(--teal)", fontWeight: 600 }}>Variation {i + 1}</div>
-                    <OutputActions text={`${ad.headline}\n${ad.body}\n${ad.cta}`} starred={favorites.includes(id)} onStar={() => onFavorite(id)} />
+                    <OutputActions text={`${ad.headline}\n${ad.body}\n${ad.cta}`} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Ad Copy"] === id} feature="Ad Copy" id={id} />
                   </div>
                   <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{ad.headline}</div>
                   <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, marginBottom: 10 }}>{ad.body}</p>
@@ -68,7 +68,7 @@ export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite }) {
 }
 
 // ─── Social Bio ────────────────────────────────────────────────────────────────
-export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite }) {
+export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [platform, setPlatform] = useState("Instagram");
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -111,7 +111,7 @@ export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite })
                     <span style={{ fontSize: 11, color: "var(--teal)", fontWeight: 600 }}>{bio.length}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontSize: 11, color: "var(--text3)" }}>{bio.charCount || bio.text?.length || 0} chars</span>
-                      <OutputActions text={bio.text} starred={favorites.includes(id)} onStar={() => onFavorite(id)} />
+                      <OutputActions text={bio.text} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Social Bio"] === id} feature="Social Bio" id={id} />
                     </div>
                   </div>
                   <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{bio.text}</p>
@@ -130,7 +130,7 @@ export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite })
 }
 
 // ─── Email Builder ─────────────────────────────────────────────────────────────
-export function EmailBuilderTool({ brandProfile, onOutput }) {
+export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [type, setType] = useState("Welcome");
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -166,7 +166,7 @@ export function EmailBuilderTool({ brandProfile, onOutput }) {
           <div className="round-label">Round {round.round} · {type}</div>
           <div className="card output-card">
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-              <OutputActions text={`Subject: ${round.subject}\n\n${round.body}`} />
+              <OutputActions text={`Subject: ${round.subject}\n\n${round.body}`} onSelect={onSelect} selected={selectedOutputs["Email Templates"] === `email-${ri}`} feature="Email Templates" id={`email-${ri}`} />
             </div>
             <div style={{ padding: "14px 16px", background: "rgba(255,255,255,0.02)", borderRadius: 8, marginBottom: 12, border: "1px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>SUBJECT LINE</div>
@@ -186,7 +186,7 @@ export function EmailBuilderTool({ brandProfile, onOutput }) {
 }
 
 // ─── Content Calendar ──────────────────────────────────────────────────────────
-export function ContentCalendarTool({ brandProfile, onOutput }) {
+export function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [topic, setTopic] = useState("");
   const [contentType, setContentType] = useState("Post");
   const [frequency, setFrequency] = useState("Daily");
@@ -226,6 +226,9 @@ export function ContentCalendarTool({ brandProfile, onOutput }) {
       {rounds.map((round, ri) => (
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}</div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+            <OutputActions text={`Content Calendar for ${topic || "general"} - ${contentType} - ${frequency}\n\n${round.calendar.map(row => `${row.day}: ${row.idea} (${row.platform}) #${row.hashtags?.join(' #') || ''}`).join('\n')}`} onSelect={onSelect} selected={selectedOutputs["Content Calendar"] === `calendar-${ri}`} feature="Content Calendar" id={`calendar-${ri}`} />
+          </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
@@ -264,15 +267,15 @@ export function ContentCalendarTool({ brandProfile, onOutput }) {
 }
 
 // ─── Content Copy Page ─────────────────────────────────────────────────────────
-export function ContentCopyPage({ brandProfile, onOutput, favorites, onFavorite }) {
+export function ContentCopyPage({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   return (
     <div style={{ maxWidth: 900 }}>
       <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Content & Copy</h1>
       <p style={{ color: "var(--text2)", marginBottom: 40 }}>AI-powered content that sounds like you, scales like a team.</p>
-      <AdCopyTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} />
-      <SocialBioTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} />
-      <EmailBuilderTool brandProfile={brandProfile} onOutput={onOutput} />
-      <ContentCalendarTool brandProfile={brandProfile} onOutput={onOutput} />
+      <AdCopyTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <SocialBioTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <EmailBuilderTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <ContentCalendarTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />
     </div>
   );
 }

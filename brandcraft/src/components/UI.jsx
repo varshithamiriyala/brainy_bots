@@ -14,7 +14,7 @@ export function SkeletonCard({ lines = 3 }) {
 }
 
 // ─── Output Card Actions ───────────────────────────────────────────────────────
-export function OutputActions({ text, onStar, starred, onSave }) {
+export function OutputActions({ text, onStar, starred, onSave, onSelect, selected, feature, id }) {
   const { show, msg } = useToast();
   return (
     <div className="output-actions">
@@ -22,6 +22,11 @@ export function OutputActions({ text, onStar, starred, onSave }) {
       <button className={`action-btn ${starred ? "starred" : ""}`} onClick={() => { onStar?.(); show("★ Favourited"); }} title="Favourite">
         {starred ? <Icon name="star" size={13} /> : <Icon name="starO" size={13} />}
       </button>
+      {onSelect && (
+        <button className={`action-btn ${selected ? "selected" : ""}`} onClick={() => { onSelect(feature, id); show("✓ Selected as final!"); }} title="Select as Final">
+          <Icon name="check" size={13} />
+        </button>
+      )}
       {text && (
         <button className="action-btn" onClick={() => { navigator.clipboard.writeText(text); show("Copied!"); }} title="Copy">
           <Icon name="copy" size={13} />

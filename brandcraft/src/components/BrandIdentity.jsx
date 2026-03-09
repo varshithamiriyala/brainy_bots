@@ -5,7 +5,7 @@ import { SkeletonCard, OutputActions, GenerateMorePanel, ToolSection } from "./U
 import Icon from "./Icon";
 
 // ─── Brand Names ───────────────────────────────────────────────────────────────
-export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite }) {
+export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +42,7 @@ export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite }
                 <div key={i} className="card output-card">
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ fontFamily: "Syne", fontSize: 20, fontWeight: 800, color: "var(--teal)", marginBottom: 8 }}>{n.name}</div>
-                    <OutputActions text={n.name} starred={favorites.includes(id)} onStar={() => onFavorite(id)} />
+                    <OutputActions text={n.name} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Brand Names"] === id} feature="Brand Names" id={id} />
                   </div>
                   <p style={{ color: "var(--text2)", fontSize: 13, lineHeight: 1.6 }}>{n.reason}</p>
                 </div>
@@ -60,7 +60,7 @@ export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite }
 }
 
 // ─── Color Palette ─────────────────────────────────────────────────────────────
-export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite }) {
+export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [copiedHex, setCopiedHex] = useState("");
@@ -93,6 +93,9 @@ export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite
       {rounds.map((round, ri) => (
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}</div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+            <OutputActions text={`Color Palette: ${round.palette.map(c => `${c.name} (${c.hex}) - ${c.role}`).join(', ')}`} onSelect={onSelect} selected={selectedOutputs["Color Palette"] === `palette-${ri}`} feature="Color Palette" id={`palette-${ri}`} />
+          </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {round.palette.map((c, i) => (
               <div key={i} style={{ flex: "1 1 100px", minWidth: 90 }}>
@@ -121,7 +124,7 @@ export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite
 }
 
 // ─── Font Pairing ──────────────────────────────────────────────────────────────
-export function FontPairingTool({ brandProfile, onOutput }) {
+export function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -151,6 +154,10 @@ export function FontPairingTool({ brandProfile, onOutput }) {
             {round.pairs.map((pair, i) => (
               <div key={i} className="card">
                 <link href={`https://fonts.googleapis.com/css2?family=${pair.heading?.replace(/ /g,"+")}:wght@700&family=${pair.body?.replace(/ /g,"+")}:wght@400;500&display=swap`} rel="stylesheet" />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div></div>
+                  <OutputActions text={`Font Pairing: ${pair.heading} + ${pair.body} - ${pair.reason}`} onSelect={onSelect} selected={selectedOutputs["Font Pairing"] === `font-${ri}-${i}`} feature="Font Pairing" id={`font-${ri}-${i}`} />
+                </div>
                 <div style={{ fontFamily: `'${pair.heading}', serif`, fontSize: 32, fontWeight: 700, marginBottom: 8 }}>The quick brown fox</div>
                 <div style={{ fontFamily: `'${pair.body}', sans-serif`, fontSize: 15, color: "var(--text2)", lineHeight: 1.7, marginBottom: 12 }}>
                   Your brand story deserves typography that communicates trust and identity.
@@ -180,7 +187,7 @@ export function FontPairingTool({ brandProfile, onOutput }) {
 }
 
 // ─── Logo Creator ──────────────────────────────────────────────────────────────
-export function LogoCreatorTool({ brandProfile, onOutput }) {
+export function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingIdx, setLoadingIdx] = useState(-1);
@@ -304,7 +311,8 @@ export function LogoCreatorTool({ brandProfile, onOutput }) {
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{logo.style}</div>
                     <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>512 × 512 · PNG</div>
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <OutputActions text={`Logo: ${logo.style} - ${logo.prompt}`} onSelect={onSelect} selected={selectedOutputs["Logo Creator"] === `logo-${ri}-${i}`} feature="Logo Creator" id={`logo-${ri}-${i}`} />
                     <button className="action-btn" title="Download PNG" onClick={() => downloadImage(logo.imageUrl, logo.style)}>
                       <Icon name="download" size={13} />
                     </button>
@@ -328,15 +336,15 @@ export function LogoCreatorTool({ brandProfile, onOutput }) {
 }
 
 // ─── Brand Identity Page ───────────────────────────────────────────────────────
-export function BrandIdentityPage({ brandProfile, onOutput, favorites, onFavorite }) {
+export function BrandIdentityPage({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   return (
     <div style={{ maxWidth: 900 }}>
       <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Brand Identity</h1>
       <p style={{ color: "var(--text2)", marginBottom: 40 }}>Build the visual and verbal foundation of your brand.</p>
-      <BrandNamesTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} />
-      <LogoCreatorTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} />
-      <ColorPaletteTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} />
-      <FontPairingTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} />
+      <BrandNamesTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <LogoCreatorTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <ColorPaletteTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <FontPairingTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
     </div>
   );
 }

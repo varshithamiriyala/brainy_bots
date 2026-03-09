@@ -1,385 +1,456 @@
 import { useState } from "react";
-import { YetiCharacter } from "./YetiCharacter";
+import { AuthPage } from "./AuthPage";
 
-// ─── Auth Page ─────────────────────────────────────────────────────────────────
-export function AuthPage({ type, onAuth, onNav }) {
-  const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [loading, setLoading] = useState(false);
-  const isSignup = type === "signup";
+// re-export for backwards compatibility
+export { AuthPage };
 
-  const handleSubmit = async () => {
-    if (!email || !pass) return;
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    onAuth({ email, id: "user_" + Date.now() });
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "linear-gradient(135deg, #080B14 0%, #0D1120 50%, #111827 100%)", position: "relative", overflow: "hidden" }}>
-      {/* Decorative orbs */}
-      <div className="orb" style={{ width: 500, height: 500, background: "radial-gradient(circle, rgba(78,205,196,0.05), transparent 70%)", top: -100, left: -100 }} />
-      <div className="orb" style={{ width: 400, height: 400, background: "radial-gradient(circle, rgba(135,206,235,0.08), transparent 70%)", bottom: -50, right: -50 }} />
-
-      {/* Left Panel - Yeti */}
-      <div
-        style={{
-          flex: 1,
-          background: "linear-gradient(135deg, #E8F4F8 0%, #87CEEB 50%, #4A90E2 100%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          overflow: "hidden",
-          padding: 40,
-        }}
-      >
-        {/* Sky gradient overlay */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "radial-gradient(ellipse at center top, rgba(255,255,255,0.3), rgba(135,206,235,0) 70%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Yeti Character */}
-        <div style={{ width: "100%", maxWidth: "400px", height: "400px", position: "relative", zIndex: 1 }}>
-          <YetiCharacter />
-        </div>
-
-        {/* Footer text */}
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: 20,
-            position: "relative",
-            zIndex: 2,
-            color: "#1e5a96",
-            fontWeight: 700,
-            fontSize: 18,
-            fontFamily: "Syne, sans-serif",
-            letterSpacing: "2px",
-            textTransform: "uppercase",
-            textShadow: "0 2px 4px rgba(255,255,255,0.3)",
-          }}
-        >
-          EXPLORE. LEARN.
-        </div>
-      </div>
-
-      {/* Right Panel - Auth Form */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 40,
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 420,
-            padding: 40,
-            background: "var(--bg2)",
-            border: "1px solid var(--border)",
-            borderRadius: 20,
-            animation: "fadeSlideIn 0.5s ease",
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div
-              style={{
-                fontFamily: "Syne",
-                fontSize: 22,
-                fontWeight: 800,
-                background: "linear-gradient(135deg, #87CEEB, #4ECDC4)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                marginBottom: 8,
-              }}
-            >
-              BrandCraft
-            </div>
-            <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>
-              {isSignup ? "Create your account" : "Welcome back"}
-            </h2>
-            <p style={{ color: "var(--text2)", fontSize: 14 }}>
-              {isSignup ? "Start building your brand today" : "Sign in to your workspace"}
-            </p>
-          </div>
-
-          <button
-            onClick={() => {
-              setLoading(true);
-              setTimeout(() => onAuth({ email: "demo@brandcraft.ai", id: "demo_user" }), 600);
-            }}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              color: "var(--text)",
-              fontFamily: "DM Sans",
-              fontSize: 15,
-              cursor: "pointer",
-              marginBottom: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = "var(--teal)";
-              e.currentTarget.style.background = "var(--teal-glow)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = "var(--border)";
-              e.currentTarget.style.background = "var(--card)";
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-            </svg>
-            Continue with Google
-          </button>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-            <span style={{ color: "var(--text3)", fontSize: 12 }}>or</span>
-            <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-          </div>
-
-          <input
-            className="input-base"
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{ marginBottom: 12 }}
-          />
-          <input
-            className="input-base"
-            type="password"
-            placeholder="Password"
-            value={pass}
-            onChange={e => setPass(e.target.value)}
-            style={{ marginBottom: 24 }}
-          />
-          <button
-            className="btn-primary"
-            style={{ width: "100%", fontSize: 16, padding: "14px" }}
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? "Loading…" : isSignup ? "Create Account" : "Sign In"}
-          </button>
-          <p style={{ textAlign: "center", marginTop: 20, color: "var(--text2)", fontSize: 14 }}>
-            {isSignup ? "Already have an account? " : "Don't have an account? "}
-            <span
-              style={{ color: "var(--teal)", cursor: "pointer" }}
-              onClick={() => onNav(isSignup ? "login" : "signup")}
-            >
-              {isSignup ? "Sign in" : "Sign up"}
-            </span>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Onboarding Page ───────────────────────────────────────────────────────────
+// brand profile wizard with 12 questions
 export function OnboardingPage({ user, onComplete }) {
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({
-    business: "", industry: "", stage: "", ageGroup: [], gender: "",
-    colorMood: "", logoStyle: "", aesthetic: "", imagery: "",
-    sliders: { playfulness: 50, boldness: 50, modernity: 50 },
-    voice: "", goals: [],
+  const [profile, setProfile] = useState({
+    businessDo: "",
+    industry: "",
+    businessStage: "",
+    targetAge: [],
+    genderFocus: "",
+    colorMood: "",
+    logoStyle: "",
+    designAesthetic: "",
+    imageryStyle: "",
+    personality: { playful: 50, minimal: 50, modern: 50 },
+    brandVoice: "",
+    brandGoals: [],
   });
 
-  const total = 12;
-  const update = (key, val) => setAnswers(p => ({ ...p, [key]: val }));
-  const toggleArr = (key, val) => setAnswers(p => ({ ...p, [key]: p[key].includes(val) ? p[key].filter(x => x !== val) : [...p[key], val] }));
-
-  const steps = [
+  const questions = [
     {
-      q: "What does your business do?",
-      content: <textarea className="input-base" rows={4} placeholder="Describe your business, products or services..." value={answers.business} onChange={e => update("business", e.target.value)} style={{ resize: "none" }} />
+      key: "businessDo",
+      label: "What does your business do?",
+      type: "textarea",
+      large: true,
     },
     {
-      q: "What industry are you in?",
-      content: (
-        <select className="select-base" value={answers.industry} onChange={e => update("industry", e.target.value)}>
-          <option value="">Select industry...</option>
-          {["Fashion","Tech","Food & Beverage","Health & Wellness","Finance","Education","Entertainment","E-commerce","Real Estate","Sports"].map(i => <option key={i}>{i}</option>)}
-        </select>
-      )
+      key: "industry",
+      label: "What industry are you in?",
+      type: "dropdown",
+      options: ["Fashion", "Tech", "Food & Beverage", "Health & Wellness", "Finance", "Education", "Entertainment", "E-commerce", "Real Estate", "Sports"],
     },
     {
-      q: "What stage is your business at?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Idea","Startup","Growing","Established"].map(s => (
-            <span key={s} className={`pill ${answers.stage === s ? "active" : ""}`} onClick={() => update("stage", s)}>{s}</span>
-          ))}
-        </div>
-      )
+      key: "businessStage",
+      label: "What stage is your business at?",
+      type: "pills",
+      options: ["Idea", "Startup", "Growing", "Established"],
+      single: true,
     },
     {
-      q: "Who is your target age group?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Gen Z","Millennial","Gen X","Boomer","All"].map(a => (
-            <span key={a} className={`pill ${answers.ageGroup.includes(a) ? "active" : ""}`} onClick={() => toggleArr("ageGroup", a)}>{a}</span>
-          ))}
-        </div>
-      )
+      key: "targetAge",
+      label: "Who is your target age group?",
+      type: "pills",
+      options: ["Gen Z", "Millennial", "Gen X", "Boomer", "All"],
+      multi: true,
     },
     {
-      q: "What is your gender focus?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Male","Female","Neutral","All"].map(g => (
-            <span key={g} className={`pill ${answers.gender === g ? "active" : ""}`} onClick={() => update("gender", g)}>{g}</span>
-          ))}
-        </div>
-      )
+      key: "genderFocus",
+      label: "What is your gender focus?",
+      type: "pills",
+      options: ["Male", "Female", "Neutral", "All"],
+      single: true,
     },
     {
-      q: "What color mood fits your brand?",
-      content: (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-          {[
-            { name: "Warm", colors: ["#FF6B6B","#FFA500","#FFD700"] },
-            { name: "Cool", colors: ["#4ECDC4","#6BB5FF","#9B59B6"] },
-            { name: "Dark", colors: ["#2C3E50","#1A1A2E","#16213E"] },
-            { name: "Pastel", colors: ["#FFB3BA","#FFDFBA","#FFFFBA"] },
-            { name: "Vibrant", colors: ["#FF0080","#00FF80","#0080FF"] },
-            { name: "Neutral", colors: ["#B5B5B5","#8A8A8A","#5C5C5C"] },
-          ].map(m => (
-            <div key={m.name} onClick={() => update("colorMood", m.name)}
-              style={{ padding: 14, borderRadius: 12, border: `1px solid ${answers.colorMood === m.name ? "var(--teal)" : "var(--border)"}`, background: answers.colorMood === m.name ? "var(--teal-glow)" : "var(--card)", cursor: "pointer", transition: "all 0.2s" }}>
-              <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
-                {m.colors.map(c => <div key={c} style={{ width: 20, height: 20, borderRadius: "50%", background: c }} />)}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: answers.colorMood === m.name ? "var(--teal)" : "var(--text2)" }}>{m.name}</div>
-            </div>
-          ))}
-        </div>
-      )
+      key: "colorMood",
+      label: "What color mood fits your brand?",
+      type: "swatches",
+      options: [
+        { label: "Warm", color: "#FFB74D" },
+        { label: "Cool", color: "#64B5F6" },
+        { label: "Dark", color: "#424242" },
+        { label: "Pastel", color: "#F8BBD9" },
+        { label: "Vibrant", color: "#FF5722" },
+        { label: "Neutral", color: "#9E9E9E" },
+      ],
+      single: true,
     },
     {
-      q: "What logo style do you want?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Wordmark","Icon","Monogram","Abstract","Combination"].map(s => (
-            <span key={s} className={`pill ${answers.logoStyle === s ? "active" : ""}`} onClick={() => update("logoStyle", s)}>{s}</span>
-          ))}
-        </div>
-      )
+      key: "logoStyle",
+      label: "What logo style do you want?",
+      type: "cards",
+      options: ["Wordmark", "Icon", "Monogram", "Abstract", "Combination"],
+      single: true,
     },
     {
-      q: "What design aesthetic fits your brand?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Minimal","Bold","Playful","Elegant","Futuristic","Retro"].map(a => (
-            <span key={a} className={`pill ${answers.aesthetic === a ? "active" : ""}`} onClick={() => update("aesthetic", a)}>{a}</span>
-          ))}
-        </div>
-      )
+      key: "designAesthetic",
+      label: "What design aesthetic fits your brand?",
+      type: "cards",
+      options: ["Minimal", "Bold", "Playful", "Elegant", "Futuristic", "Retro"],
+      single: true,
     },
     {
-      q: "What imagery style fits your brand?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Photography","Illustration","3D","Flat"].map(i => (
-            <span key={i} className={`pill ${answers.imagery === i ? "active" : ""}`} onClick={() => update("imagery", i)}>{i}</span>
-          ))}
-        </div>
-      )
+      key: "imageryStyle",
+      label: "What imagery style fits your brand?",
+      type: "cards",
+      options: ["Photography", "Illustration", "3D", "Flat"],
+      single: true,
     },
     {
-      q: "Set your brand personality",
-      content: (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {[["Playful","Professional","playfulness"],["Minimal","Bold","boldness"],["Modern","Classic","modernity"]].map(([l, r, key]) => (
-            <div key={key}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text2)", marginBottom: 8 }}>
-                <span>{l}</span><span>{r}</span>
-              </div>
-              <input type="range" min={0} max={100} value={answers.sliders[key]}
-                onChange={e => update("sliders", { ...answers.sliders, [key]: +e.target.value })}
-                style={{ width: "100%", accentColor: "var(--teal)" }} />
-            </div>
-          ))}
-        </div>
-      )
+      key: "personality",
+      label: "Set your brand personality",
+      type: "sliders",
+      sliders: [
+        { left: "Playful", right: "Professional", key: "playful" },
+        { left: "Minimal", right: "Bold", key: "minimal" },
+        { left: "Modern", right: "Classic", key: "modern" },
+      ],
     },
     {
-      q: "What is your brand voice?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Friendly","Authoritative","Witty","Inspiring","Luxurious","Edgy"].map(v => (
-            <span key={v} className={`pill ${answers.voice === v ? "active" : ""}`} onClick={() => update("voice", v)}>{v}</span>
-          ))}
-        </div>
-      )
+      key: "brandVoice",
+      label: "What is your brand voice?",
+      type: "pills",
+      options: ["Friendly", "Authoritative", "Witty", "Inspiring", "Luxurious", "Edgy"],
+      single: true,
     },
     {
-      q: "What are your brand goals?",
-      content: (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {["Build Trust","Go Viral","Look Premium","Appeal Globally","Build Community"].map(g => (
-            <span key={g} className={`pill ${answers.goals.includes(g) ? "active" : ""}`} onClick={() => toggleArr("goals", g)}>{g}</span>
-          ))}
-        </div>
-      )
+      key: "brandGoals",
+      label: "What are your brand goals?",
+      type: "pills",
+      options: ["Build Trust", "Go Viral", "Look Premium", "Appeal Globally", "Build Community"],
+      multi: true,
     },
   ];
 
-  const isLast = step === total - 1;
+  const handleChange = (key, value) => {
+    setProfile({ ...profile, [key]: value });
+  };
+
+  const handleMultiSelect = (key, option, selected) => {
+    const current = profile[key] || [];
+    if (selected) {
+      setProfile({ ...profile, [key]: [...current, option] });
+    } else {
+      setProfile({ ...profile, [key]: current.filter(o => o !== option) });
+    }
+  };
+
+  const handleSlider = (sliderKey, value) => {
+    setProfile({
+      ...profile,
+      personality: { ...profile.personality, [sliderKey]: value },
+    });
+  };
+
+  const next = () => {
+    if (step < questions.length - 1) setStep(step + 1);
+  };
+
+  const prev = () => {
+    if (step > 0) setStep(step - 1);
+  };
+
+  const finish = () => {
+    onComplete(profile);
+  };
+
+  const current = questions[step];
+
+  const renderInput = () => {
+    switch (current.type) {
+      case "textarea":
+        return (
+          <textarea
+            value={profile[current.key]}
+            onChange={(e) => handleChange(current.key, e.target.value)}
+            rows={current.large ? 6 : 4}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #ccc",
+              outline: "none",
+              fontSize: 16,
+              resize: "vertical",
+              transition: "border 0.25s",
+            }}
+          />
+        );
+      case "dropdown":
+        return (
+          <select
+            value={profile[current.key]}
+            onChange={(e) => handleChange(current.key, e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #ccc",
+              outline: "none",
+              fontSize: 16,
+              transition: "border 0.25s",
+            }}
+          >
+            <option value="">Select...</option>
+            {current.options.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        );
+      case "pills":
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {current.options.map(opt => {
+              const selected = current.multi
+                ? (profile[current.key] || []).includes(opt)
+                : profile[current.key] === opt;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => {
+                    if (current.multi) {
+                      handleMultiSelect(current.key, opt, !selected);
+                    } else {
+                      handleChange(current.key, selected ? "" : opt);
+                    }
+                  }}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 20,
+                    border: "1px solid #ccc",
+                    background: selected ? "#7C4DFF" : "#fff",
+                    color: selected ? "#fff" : "#7C4DFF",
+                    cursor: "pointer",
+                    fontFamily: "Fredoka One, sans-serif",
+                    fontSize: 14,
+                    transition: "all 0.25s",
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        );
+      case "swatches":
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {current.options.map(opt => {
+              const selected = profile[current.key] === opt.label;
+              return (
+                <button
+                  key={opt.label}
+                  onClick={() => handleChange(current.key, selected ? "" : opt.label)}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 12,
+                    border: selected ? "3px solid #7C4DFF" : "1px solid #ccc",
+                    background: opt.color,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    color: "#fff",
+                    textShadow: "0 0 4px rgba(0,0,0,0.5)",
+                    transition: "all 0.25s",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      case "cards":
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {current.options.map(opt => {
+              const selected = profile[current.key] === opt;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => handleChange(current.key, selected ? "" : opt)}
+                  style={{
+                    padding: "16px",
+                    borderRadius: 12,
+                    border: selected ? "2px solid #7C4DFF" : "1px solid #ccc",
+                    background: selected ? "#F5EEFF" : "#fff",
+                    cursor: "pointer",
+                    fontFamily: "Fredoka One, sans-serif",
+                    fontSize: 14,
+                    color: selected ? "#7C4DFF" : "#2D1B69",
+                    transition: "all 0.25s",
+                    minWidth: 100,
+                    textAlign: "center",
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        );
+      case "sliders":
+        return (
+          <div style={{ width: "100%" }}>
+            {current.sliders.map(slider => (
+              <div key={slider.key} style={{ marginBottom: 24 }}>
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                  fontSize: 14,
+                  color: "#6B5B8A",
+                }}>
+                  <span>{slider.left}</span>
+                  <span>{slider.right}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={profile.personality[slider.key]}
+                  onChange={(e) => handleSlider(slider.key, e.target.value)}
+                  style={{
+                    width: "100%",
+                    height: 6,
+                    borderRadius: 3,
+                    background: "#e0e0e0",
+                    outline: "none",
+                    appearance: "none",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
-      <div style={{ width: "100%", maxWidth: 600 }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ fontFamily: "Syne", fontSize: 20, fontWeight: 800, color: "var(--teal)", marginBottom: 4 }}>BrandCraft</div>
-          <p style={{ color: "var(--text2)", fontSize: 14 }}>Let's build your brand profile</p>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "linear-gradient(135deg, #F5EEFF, #FFF0F8, #EEF4FF)",
+      padding: 20,
+    }}>
+      <div style={{
+        width: "100%",
+        maxWidth: 700,
+        background: "rgba(255,255,255,0.9)",
+        backdropFilter: "blur(20px)",
+        borderRadius: 28,
+        padding: 40,
+        boxShadow: "0 20px 40px rgba(124,77,255,0.15)",
+        border: "1px solid rgba(255,255,255,0.2)",
+        textAlign: "center",
+      }}>
+        <h2 style={{
+          fontFamily: "Fredoka One, sans-serif",
+          fontSize: 28,
+          fontWeight: 800,
+          color: "#7C4DFF",
+          marginBottom: 8,
+        }}>
+          Brand Profile Wizard
+        </h2>
+        <p style={{
+          color: "#6B5B8A",
+          fontSize: 16,
+          marginBottom: 32,
+        }}>
+          Question {step + 1} of {questions.length}
+        </p>
+
+        <div style={{ marginBottom: 32 }}>
+          <label style={{
+            display: "block",
+            fontFamily: "Fredoka One, sans-serif",
+            fontSize: 18,
+            color: "#2D1B69",
+            marginBottom: 16,
+          }}>
+            {current.label}
+          </label>
+          {renderInput()}
         </div>
 
-        <div className="progress-bar" style={{ marginBottom: 8 }}>
-          <div className="progress-fill" style={{ width: `${((step + 1) / total) * 100}%` }} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text2)", fontSize: 12, marginBottom: 40 }}>
-          <span>Step {step + 1} of {total}</span>
-          <span>{Math.round(((step + 1) / total) * 100)}% complete</span>
-        </div>
-
-        <div key={step} style={{ animation: "slideUp 0.35s ease" }}>
-          <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 28 }}>{steps[step].q}</h2>
-          {steps[step].content}
-        </div>
-
-        <div style={{ display: "flex", gap: 12, marginTop: 36 }}>
-          {step > 0 && <button className="btn-ghost" onClick={() => setStep(s => s - 1)}>Back</button>}
-          <button className="btn-primary" style={{ marginLeft: "auto" }}
-            onClick={() => isLast ? onComplete(answers) : setStep(s => s + 1)}>
-            {isLast ? "Generate My Brand Profile ✨" : "Next →"}
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <button
+            onClick={prev}
+            disabled={step === 0}
+            style={{
+              padding: "12px 24px",
+              borderRadius: 20,
+              border: "1px solid #ccc",
+              background: step === 0 ? "#f0f0f0" : "#fff",
+              color: step === 0 ? "#ccc" : "#7C4DFF",
+              cursor: step === 0 ? "not-allowed" : "pointer",
+              fontFamily: "Fredoka One, sans-serif",
+              fontSize: 16,
+              transition: "background 0.25s",
+            }}
+          >
+            Previous
           </button>
+
+          {step < questions.length - 1 ? (
+            <button
+              onClick={next}
+              style={{
+                padding: "12px 24px",
+                borderRadius: 20,
+                border: "none",
+                background: "#7C4DFF",
+                color: "#fff",
+                cursor: "pointer",
+                fontFamily: "Fredoka One, sans-serif",
+                fontSize: 16,
+                transition: "background 0.25s",
+              }}
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              onClick={finish}
+              style={{
+                padding: "12px 24px",
+                borderRadius: 20,
+                border: "none",
+                background: "#7C4DFF",
+                color: "#fff",
+                cursor: "pointer",
+                fontFamily: "Fredoka One, sans-serif",
+                fontSize: 16,
+                transition: "background 0.25s",
+              }}
+            >
+              Generate My Brand Profile
+            </button>
+          )}
+        </div>
+
+        {/* progress bar */}
+        <div style={{
+          marginTop: 32,
+          width: "100%",
+          height: 8,
+          background: "#e0e0e0",
+          borderRadius: 4,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            width: `${((step + 1) / questions.length) * 100}%`,
+            height: "100%",
+            background: "#7C4DFF",
+            transition: "width 0.3s ease",
+          }} />
         </div>
       </div>
     </div>

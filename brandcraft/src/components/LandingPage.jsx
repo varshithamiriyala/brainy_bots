@@ -1,4 +1,5 @@
 import Icon from "./Icon";
+import ToolsCarousel from "./ToolsCarousel";
 
 const features = [
   { icon: "zap", name: "✨ Brand Name Generator", desc: "Magic words that capture your essence" },
@@ -152,6 +153,18 @@ export default function LandingPage({ onNav }) {
             </div>
           ))}
         </div>
+      </section>
+
+      <HanddrawnDivider />
+
+      {/* CHAPTER 1.5: Our Magical Tools */}
+      <section style={{ padding: "80px 48px", background: "linear-gradient(135deg, rgba(255,107,157,0.05) 0%, rgba(124,77,255,0.05) 100%)", borderTop: "2px solid rgba(255,107,157,0.1)", borderBottom: "2px solid rgba(255,107,157,0.1)" }}>
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#FF6B9D", fontFamily: "Nunito", marginBottom: 12, textTransform: "uppercase", letterSpacing: "1px" }}>🛠️ Chapter 1.5</div>
+          <h2 style={{ fontSize: 52, fontWeight: 800, marginBottom: 20, color: "#2D1B69", fontFamily: "Fredoka One" }}>Our Enchanted Toolkit</h2>
+          <p style={{ textAlign: "center", color: "#6B5B8A", marginBottom: 40, fontSize: 18, fontFamily: "Nunito", fontWeight: 500 }}>Discover the magical tools that bring your brand story to life.</p>
+        </div>
+        <ToolsCarousel />
       </section>
 
       <HanddrawnDivider />
