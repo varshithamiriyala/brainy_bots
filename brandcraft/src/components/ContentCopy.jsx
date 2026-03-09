@@ -130,28 +130,59 @@ export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, s
 }
 
 // ─── Email Builder ─────────────────────────────────────────────────────────────
-export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
+export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect, toolOutputs, saveToolOutput, getToolOutputs }) {
   const [type, setType] = useState("Welcome");
-  const [rounds, setRounds] = useState([]);
+  const [rounds, setRounds] = useState(() => getToolOutputs ? getToolOutputs("email-builder") : []);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const generate = async (spec = "") => {
+    if (!brandProfile) {
+      setError("Please complete your brand profile first");
+      return;
+    }
     setLoading(true);
+    setError(null);
     try {
       const result = await callAIJSON(
         "You are an email marketing expert. Return JSON: {subject: string, preheader: string, body: string}. Body should be well-structured email copy.",
         `Brand: ${JSON.stringify(brandProfile)}. Email type: ${type}. ${spec || "Write a compelling email."}`
       );
       if (result.subject) {
-        setRounds(r => [...r, { ...result, spec, round: r.length + 1 }]);
+        const newRound = { ...result, spec, round: rounds.length + 1 };
+        setRounds(prev => {
+          const updated = [...prev, newRound];
+          // Save to persistence
+          if (saveToolOutput) {
+            saveToolOutput("email-builder", newRound);
+          }
+          return updated;
+        });
         onOutput("Email Template", result.subject);
+      } else if (result.error) {
+        setError("Failed to generate email. Please try again.");
       }
-    } catch {}
+    } catch (err) {
+      setError("Connection error. Please check your API keys and try again.");
+    }
     setLoading(false);
   };
 
   return (
     <ToolSection title="Email Template Builder" desc="Emails your audience will actually open.">
+      {error && (
+        <div style={{ 
+          padding: "12px 16px", 
+          background: "rgba(255,107,107,0.1)", 
+          border: "1px solid rgba(255,107,107,0.3)", 
+          borderRadius: 8, 
+          marginBottom: 20,
+          color: "#FF6B6B",
+          fontSize: 14
+        }}>
+          ⚠️ {error}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
         <select className="select-base" style={{ width: "auto", minWidth: 180 }} value={type} onChange={e => setType(e.target.value)}>
           {["Welcome","Promotional","Newsletter","Follow-up","Abandoned Cart"].map(t => <option key={t}>{t}</option>)}
@@ -267,14 +298,14 @@ export function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, o
 }
 
 // ─── Content Copy Page ─────────────────────────────────────────────────────────
-export function ContentCopyPage({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
+export function ContentCopyPage({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect, toolOutputs, saveToolOutput, getToolOutputs }) {
   return (
     <div style={{ maxWidth: 900 }}>
       <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Content & Copy</h1>
       <p style={{ color: "var(--text2)", marginBottom: 40 }}>AI-powered content that sounds like you, scales like a team.</p>
       <AdCopyTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
       <SocialBioTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-      <EmailBuilderTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />
+      <EmailBuilderTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} toolOutputs={toolOutputs} saveToolOutput={saveToolOutput} getToolOutputs={getToolOutputs} />
       <ContentCalendarTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />
     </div>
   );

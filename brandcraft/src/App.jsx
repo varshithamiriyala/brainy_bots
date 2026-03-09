@@ -46,6 +46,18 @@ export default function App() {
   const [favorites, setFavorites] = useState([]);
   const [selectedOutputs, setSelectedOutputs] = useState({});
   const [showConfetti, setShowConfetti] = useState(false);
+  
+  // Persist tool outputs across navigation - stores all generated content
+  const [toolOutputs, setToolOutputs] = useState({
+    "brand-names": [],
+    "color-palette": [],
+    "font-pairing": [],
+    "logo-creator": [],
+    "ad-copy": [],
+    "social-bio": [],
+    "email-builder": [],
+    "content-calendar": [],
+  });
   const [confettiType, setConfettiType] = useState("default");
   const [celebrationMessage, setCelebrationMessage] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
@@ -90,6 +102,19 @@ export default function App() {
 
   const handleOutput = (feature, preview) => {
     setOutputs(o => [...o, { feature, preview, time: Date.now() }]);
+  };
+
+  // Function to save tool outputs for persistence across navigation
+  const saveToolOutput = (toolKey, outputData) => {
+    setToolOutputs(prev => ({
+      ...prev,
+      [toolKey]: [...(prev[toolKey] || []), { ...outputData, time: Date.now() }]
+    }));
+  };
+
+  // Function to get persisted outputs for a specific tool
+  const getToolOutputs = (toolKey) => {
+    return toolOutputs[toolKey] || [];
   };
 
   const handleFavorite = (id) => {
@@ -146,6 +171,10 @@ export default function App() {
     selectedOutputs,
     onSelect: handleSelect,
     onDownloadPDF: handleDownloadPDF,
+    // Add persistence functions
+    toolOutputs,
+    saveToolOutput,
+    getToolOutputs,
   };
 
   return (
