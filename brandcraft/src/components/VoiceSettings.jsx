@@ -5,48 +5,9 @@ import { useTheme } from "../hooks/useTheme";
 import { applyTheme } from "../utils/themes";
 import { SkeletonCard, OutputActions, GenerateMorePanel } from "./UI";
 import Icon from "./Icon";
+import { PageShell } from "./PageShell";
 
-// ─── Shared Page Shell ─────────────────────────────────────────────────────────
-function PageShell({ emoji, title, desc, tools, activeId, onSetActive, children }) {
-  return (
-    <div style={{ display: "flex", minHeight: "calc(100vh - 64px)", gap: 0 }}>
-      <aside style={{
-        width: 234, flexShrink: 0, borderRight: "1px solid var(--border)",
-        paddingBottom: 40, background: "var(--bg2)",
-      }}>
-        <div style={{ position: "sticky", top: 0, paddingTop: 32 }}>
-          <div style={{ padding: "0 20px 24px" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 6, fontFamily: "Fredoka One" }}>{title}</h1>
-            <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
-          </div>
-          <div style={{ padding: "0 10px" }}>
-            {tools.map(t => (
-              <div key={t.id} onClick={() => onSetActive(t.id)} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "11px 14px", borderRadius: 12, cursor: "pointer", marginBottom: 3,
-                background: activeId === t.id ? "var(--teal-glow)" : "transparent",
-                border: `1.5px solid ${activeId === t.id ? "var(--teal)" : "transparent"}`,
-                color: activeId === t.id ? "var(--teal)" : "var(--text2)",
-                fontWeight: activeId === t.id ? 700 : 500,
-                fontSize: 13, transition: "all 0.18s ease",
-              }}
-              onMouseEnter={e => { if (activeId !== t.id) e.currentTarget.style.background = "var(--teal-glow)"; }}
-              onMouseLeave={e => { if (activeId !== t.id) e.currentTarget.style.background = "transparent"; }}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{t.emoji}</span>
-                <span>{t.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
-      <main style={{ flex: 1, minWidth: 0, padding: "32px 40px 80px", overflowY: "auto" }}>
-        {children}
-      </main>
-    </div>
-  );
-}
+
 
 // ─── Voice Rewriter ────────────────────────────────────────────────────────────
 function VoiceTool({ brandProfile, onOutput }) {
@@ -218,7 +179,7 @@ export function VoiceStylePage({ brandProfile, onOutput }) {
 
   return (
     <PageShell
-      emoji="🎙️" title="Voice & Style"
+      emoji="🎙️" title="Voice & Style" color="#F050A8"
       desc="Shape how your brand sounds and how it makes people feel."
       tools={tools} activeId={activeTool} onSetActive={setActiveTool}
     >

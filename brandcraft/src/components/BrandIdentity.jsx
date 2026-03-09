@@ -3,51 +3,8 @@ import { callAIJSON } from "../utils/api";
 import { generateLogoImage } from "../utils/imageProviders";
 import { SkeletonCard, OutputActions, GenerateMorePanel, ToolSection } from "./UI";
 import Icon from "./Icon";
+import { PageShell } from "./PageShell";
 
-// ─── Shared Page Shell ─────────────────────────────────────────────────────────
-function PageShell({ emoji, title, desc, tools, activeId, onSetActive, children }) {
-  return (
-    <div style={{ display: "flex", minHeight: "calc(100vh - 64px)", gap: 0 }}>
-      {/* Left sidebar nav */}
-      <aside style={{
-        width: 234, flexShrink: 0, borderRight: "1px solid var(--border)",
-        paddingBottom: 40, background: "var(--bg2)",
-      }}>
-        <div style={{ position: "sticky", top: 0, paddingTop: 32 }}>
-          <div style={{ padding: "0 20px 24px" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 6, fontFamily: "Fredoka One" }}>{title}</h1>
-            <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
-          </div>
-          <div style={{ padding: "0 10px" }}>
-            {tools.map(t => (
-              <div key={t.id} onClick={() => onSetActive(t.id)} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "11px 14px", borderRadius: 12, cursor: "pointer", marginBottom: 3,
-                background: activeId === t.id ? "var(--teal-glow)" : "transparent",
-                border: `1.5px solid ${activeId === t.id ? "var(--teal)" : "transparent"}`,
-                color: activeId === t.id ? "var(--teal)" : "var(--text2)",
-                fontWeight: activeId === t.id ? 700 : 500,
-                fontSize: 13, transition: "all 0.18s ease",
-              }}
-              onMouseEnter={e => { if (activeId !== t.id) { e.currentTarget.style.background = "var(--teal-glow)"; e.currentTarget.style.opacity = "0.7"; }}}
-              onMouseLeave={e => { if (activeId !== t.id) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.opacity = "1"; }}}
-              >
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{t.emoji}</span>
-                <span>{t.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* Right content */}
-      <main style={{ flex: 1, minWidth: 0, padding: "32px 40px 80px", overflowY: "auto" }}>
-        {children}
-      </main>
-    </div>
-  );
-}
 
 // ─── Auto-Suggest Banner ───────────────────────────────────────────────────────
 function AutoSuggest({ suggestions }) {
@@ -617,7 +574,7 @@ export function BrandIdentityPage({ brandProfile, onOutput, favorites, onFavorit
 
   return (
     <PageShell
-      emoji="🎨" title="Brand Identity"
+      emoji="🎨" title="Brand Identity" color="#7C4DFF"
       desc="Build the visual and verbal foundation of your brand."
       tools={tools} activeId={activeTool} onSetActive={setActiveTool}
     >

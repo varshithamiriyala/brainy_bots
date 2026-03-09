@@ -340,7 +340,7 @@ export default function App() {
           {page === "onboarding" && <OnboardingPage user={user} onComplete={handleOnboardingComplete} />}
 
           {APP_PAGES.includes(page) && user && (
-            <AppShell page={page} onNav={navigate} user={user}>
+            <AppShell page={page} onNav={navigate} user={user} onCmdOpen={() => setCmdOpen(true)}>
               {page === "dashboard"      && <Dashboard brandProfile={brandProfile} onNav={navigate} outputs={outputs} favorites={favorites} selectedOutputs={selectedOutputs} onDownloadPDF={handleDownloadPDF} />}
               {page === "brand-identity" && <BrandIdentityPage {...appProps} />}
               {page === "content-copy"   && <ContentCopyPage {...appProps} />}

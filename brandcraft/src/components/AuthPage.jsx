@@ -231,9 +231,8 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
       <div style={{ position:"absolute", bottom:-80, right:-80, width:320, height:320, borderRadius:"50%", background:"radial-gradient(circle,rgba(233,30,99,0.07) 0%,transparent 70%)", pointerEvents:"none" }}/>
 
       {/* Logo */}
-      <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:"1.15rem", fontWeight:800, color:"#0f0f14", letterSpacing:"-0.5px", marginBottom:26, zIndex:20 }}>
-        <div style={{ width:10, height:10, borderRadius:"50%", background:"#3b6ef8" }}/>
-        TribeSpace
+      <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:"1.15rem", fontWeight:800, color:"#7C4DFF", letterSpacing:"-0.5px", marginBottom:26, zIndex:20, fontFamily:"Fredoka One" }}>
+        📖 BrandCraft
       </div>
 
       {/* ── 12 Characters scattered around ── */}
@@ -293,7 +292,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           {isSignup ? "Create your brand ✨" : "Welcome back 👋"}
         </div>
         <div style={{ fontSize:"0.82rem", color:"#6b7280", marginBottom:22 }}>
-          {isSignup ? "Create your account and find your people." : "Log in to reconnect with your tribe."}
+          {isSignup ? "Create your account and start building your brand." : "Log in to continue your brand story."}
         </div>
 
         {/* Name field (signup only) */}

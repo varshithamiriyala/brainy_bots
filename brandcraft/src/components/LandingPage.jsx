@@ -425,10 +425,102 @@ function HighlightCards() {
   );
 }
 
-const stars = Array.from({ length: 10 }, (_, i) => ({
-  left: `${(i * 37 + 5) % 100}%`, top: `${(i * 53 + 10) % 80}%`,
-  size: i % 3 === 0 ? "24px" : "16px", duration: 3 + (i % 3), delay: (i * 0.4) % 3,
+// Star data — each star has a depth factor for parallax magnitude
+const STAR_DATA = Array.from({ length: 32 }, (_, i) => ({
+  id: i,
+  left:       (i * 37.3 + 3)  % 100,
+  top:        (i * 53.7 + 7)  % 88,
+  size:       [12, 16, 20, 24, 28][i % 5],
+  depth:      0.08 + (i % 7) * 0.055,   // 0.08 → 0.41 — controls how far each star moves
+  floatDur:   3.2 + (i % 6) * 0.7,
+  floatDelay: (i * 0.42) % 5,
+  opacity:    0.35 + (i % 4) * 0.15,
+  color:      ["#7C4DFF","#F050A8","#FFB300","#7C4DFF","#00C9B4"][i % 5],
+  shape:      ["✦","✧","✦","✦","✧","✦","✦","✧"][i % 8],
 }));
+
+// ─── Cursor-Tracking Star Field ───────────────────────────────────────────────
+// KEY FIX: each star is TWO divs:
+//   outer div → cursor parallax via direct DOM ref writes (no React state, no CSS animation)
+//   inner div → float bob animation via CSS (animation only affects inner, never fights outer transform)
+function StarField() {
+  const outerRefs = useRef([]);   // refs to the parallax-moving outer divs
+  const mouseRef  = useRef({ x: 0, y: 0 });   // raw mouse target
+  const curRef    = useRef({ x: 0, y: 0 });   // smoothed current position
+  const rafRef    = useRef(null);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      // Map cursor to -1…+1 range centred on screen
+      mouseRef.current.x = (e.clientX / window.innerWidth  - 0.5) * 2;
+      mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const LERP_SPEED = 0.07;   // lower = more lag/smoothness
+
+    const tick = () => {
+      // Smoothly chase the mouse
+      curRef.current.x = lerp(curRef.current.x, mouseRef.current.x, LERP_SPEED);
+      curRef.current.y = lerp(curRef.current.y, mouseRef.current.y, LERP_SPEED);
+
+      // Write directly to each DOM node — zero React re-renders, silky 60fps
+      outerRefs.current.forEach((el, i) => {
+        if (!el) return;
+        const s  = STAR_DATA[i];
+        const px = curRef.current.x * s.depth * 90;   // max travel px = depth × 90
+        const py = curRef.current.y * s.depth * 90;
+        el.style.transform = `translate(${px}px, ${py}px)`;
+      });
+
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      <style>{`
+        @keyframes starBob {
+          0%,100% { transform: translateY(0px)   rotate(0deg);  }
+          33%     { transform: translateY(-9px)  rotate(14deg); }
+          66%     { transform: translateY(5px)   rotate(-9deg); }
+        }
+      `}</style>
+      {STAR_DATA.map((s, i) => (
+        /* OUTER: only cursor parallax transform is set here via ref */
+        <div
+          key={s.id}
+          ref={el => outerRefs.current[i] = el}
+          style={{
+            position: "absolute",
+            left:     `${s.left}%`,
+            top:      `${s.top}%`,
+            willChange: "transform",
+          }}
+        >
+          {/* INNER: only float animation — never touches outer transform */}
+          <div style={{
+            fontSize:  s.size,
+            opacity:   s.opacity,
+            color:     s.color,
+            animation: `starBob ${s.floatDur}s ease-in-out ${s.floatDelay}s infinite`,
+            filter:    `drop-shadow(0 0 ${Math.round(s.size / 3)}px ${s.color})`,
+            lineHeight: 1,
+          }}>
+            {s.shape}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const HanddrawnDivider = () => (
   <svg width="100%" height="50" viewBox="0 0 1200 50" style={{ margin: "32px 0", opacity: 0.2 }}>
@@ -484,27 +576,21 @@ export default function LandingPage({ onNav }) {
 
       {/* HERO */}
       <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "140px 24px 80px", position: "relative", overflow: "hidden" }}>
+        {/* Ambient blobs */}
         <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
           <div style={{ position: "absolute", top: "5%", left: "5%", width: 600, height: 600, background: "radial-gradient(circle, rgba(124,77,255,0.09) 0%, transparent 70%)", filter: "blur(60px)", borderRadius: "50%", animation: "float 12s ease-in-out infinite" }} />
           <div style={{ position: "absolute", top: "20%", right: "3%", width: 400, height: 400, background: "radial-gradient(circle, rgba(255,107,157,0.07) 0%, transparent 70%)", filter: "blur(60px)", borderRadius: "50%", animation: "float 10s ease-in-out infinite", animationDelay: "3s" }} />
           <div style={{ position: "absolute", bottom: "5%", left: "25%", width: 500, height: 380, background: "radial-gradient(circle, rgba(255,179,0,0.06) 0%, transparent 70%)", filter: "blur(60px)", borderRadius: "50%", animation: "float 14s ease-in-out infinite", animationDelay: "6s" }} />
         </div>
-        {stars.map((s, i) => (
-          <div key={i} style={{ position: "absolute", left: s.left, top: s.top, fontSize: s.size, animation: `float ${s.duration}s ease-in-out infinite`, animationDelay: `${s.delay}s`, pointerEvents: "none", opacity: 0.55 }}>✨</div>
-        ))}
 
-        {/* Animated book */}
-        <div style={{ position: "relative", width: "260px", height: "190px", marginBottom: 40, perspective: "1000px", animation: "wobble 4s ease-in-out infinite" }}>
-          <div style={{ position: "absolute", width: "100%", height: "100%", background: "linear-gradient(135deg, #FFB300 0%, #FF6B9D 50%, #7C4DFF 100%)", borderRadius: "8px 0 0 8px", transform: "rotateY(-15deg)", transformOrigin: "right", boxShadow: "-4px 4px 16px rgba(124,77,255,0.2)" }} />
-          <div style={{ position: "absolute", width: "100%", height: "100%", background: "linear-gradient(135deg, #7C4DFF 0%, #FF6B9D 50%, #FFB300 100%)", borderRadius: "0 8px 8px 0", transform: "rotateY(15deg)", transformOrigin: "left", right: 0, boxShadow: "4px 4px 16px rgba(124,77,255,0.2)" }} />
-          <div style={{ position: "absolute", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "72px", animation: "bounce 3s ease-in-out infinite", zIndex: 10 }}>✨</div>
-        </div>
+        {/* Cursor-tracking interactive star field */}
+        <StarField />
 
-        <div className="kinetic-word" style={{ animationDelay: "0s", display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 20px", background: "rgba(124,77,255,0.1)", border: "2px solid rgba(124,77,255,0.2)", borderRadius: 24, fontSize: 14, color: "#7C4DFF", marginBottom: 32, fontWeight: 700, fontFamily: "Nunito" }}>
+        <div className="kinetic-word" style={{ animationDelay: "0s", display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 20px", background: "rgba(124,77,255,0.1)", border: "2px solid rgba(124,77,255,0.2)", borderRadius: 24, fontSize: 14, color: "#7C4DFF", marginBottom: 32, fontWeight: 700, fontFamily: "Nunito", position: "relative", zIndex: 5 }}>
           <span>🎉</span> Free · Unlimited · No Credit Card · Pure Magic
         </div>
 
-        {/* HEADLINE — complete sentence */}
+        {/* HEADLINE */}
         <div style={{ position: "relative", maxWidth: 860, zIndex: 5 }}>
           <h1 style={{ fontSize: "clamp(44px, 7vw, 86px)", fontWeight: 800, lineHeight: 1.05, marginBottom: 28, letterSpacing: "-0.02em", color: "#2D1B69", fontFamily: "Fredoka One" }}>
             <KineticText text="Every Brand Has a Story." delay={0.1} />
@@ -516,7 +602,6 @@ export default function LandingPage({ onNav }) {
           <p className="kinetic-word" style={{ animationDelay: "0.7s", fontSize: "clamp(16px, 2.5vw, 20px)", color: "#6B5B8A", lineHeight: 1.8, maxWidth: 580, margin: "0 auto 48px", fontFamily: "Nunito", fontWeight: 500 }}>
             Your brand deserves more than templates. With AI-powered storytelling, create a brand identity as unique as you are — in minutes, not months. 🌟
           </p>
-          {/* CTA BUTTONS — both trigger magic burst, no "Explore Magic" scrolling */}
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="btn-primary" style={{ fontSize: 16, padding: "16px 40px", fontFamily: "Nunito", fontWeight: 700, animation: "kineticReveal 0.7s 0.9s both" }} onClick={() => magicNav("signup")}>Begin the Journey ✨</button>
             <button className="btn-ghost" style={{ fontSize: 16, padding: "16px 40px", fontFamily: "Nunito", fontWeight: 700, animation: "kineticReveal 0.7s 1.05s both" }} onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>Explore Magic 🪄</button>
