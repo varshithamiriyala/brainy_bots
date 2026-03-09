@@ -7,7 +7,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const [isBlinking, setIsBlinking] = useState(false);
+  const [isTypingPassword, setIsTypingPassword] = useState(false);
   const characterRefs = useRef([]);
 
   const isSignup = formType === "signup";
@@ -21,15 +21,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
   }, []);
 
   useEffect(() => {
-    const iv = setInterval(() => {
-      setIsBlinking(true);
-      setTimeout(() => setIsBlinking(false), 120);
-    }, 2000 + Math.random() * 3000);
-    return () => clearInterval(iv);
-  }, []);
-
-  // Update eye positions based on cursor
-  useEffect(() => {
     const updateEyePositions = () => {
       characterRefs.current.forEach((charEl, idx) => {
         if (!charEl) return;
@@ -37,29 +28,63 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const dx = cursorPos.x - centerX;
-        const dy = cursorPos.y - centerY;
+        
+        if (isTypingPassword) {
+          const centers = [
+            { l: 38, r: 72 },
+            { l: 40, r: 80 },
+            { l: 46, r: 94 },
+            { l: 48, r: 82 },
+            { l: 40, r: 84 },
+            { l: 40, r: 74 },
+          ];
+          const leftIris = document.getElementById(`c${idx + 1}-li`);
+          const leftPupil = document.getElementById(`c${idx + 1}-lp`);
+          const rightIris = document.getElementById(`c${idx + 1}-ri`);
+          const rightPupil = document.getElementById(`c${idx + 1}-rp`);
+          if (leftIris && centers[idx]) {
+            leftIris.setAttribute("cx", String(centers[idx].l));
+            leftPupil.setAttribute("cx", String(centers[idx].l));
+          }
+          if (rightIris && centers[idx]) {
+            rightIris.setAttribute("cx", String(centers[idx].r));
+            rightPupil.setAttribute("cx", String(centers[idx].r));
+          }
+          return;
+        }
+        
         const max = 5;
         const offsetX = Math.max(-max, Math.min(max, dx / 25));
-        const offsetY = Math.max(-max, Math.min(max, dy / 25));
-
+        
+        const centers = [
+          { l: 38, r: 72 },
+          { l: 40, r: 80 },
+          { l: 46, r: 94 },
+          { l: 48, r: 82 },
+          { l: 40, r: 84 },
+          { l: 40, r: 74 },
+        ];
         const leftIris = document.getElementById(`c${idx + 1}-li`);
         const leftPupil = document.getElementById(`c${idx + 1}-lp`);
         const rightIris = document.getElementById(`c${idx + 1}-ri`);
         const rightPupil = document.getElementById(`c${idx + 1}-rp`);
-
-        if (leftIris) {
-          leftIris.setAttribute("cx", String(38 + offsetX));
-          leftPupil.setAttribute("cx", String(38 + offsetX));
+        if (leftIris && centers[idx]) {
+          leftIris.setAttribute("cx", String(centers[idx].l + offsetX));
+          leftPupil.setAttribute("cx", String(centers[idx].l + offsetX));
         }
-        if (rightIris) {
-          rightIris.setAttribute("cx", String(72 + offsetX));
-          rightPupil.setAttribute("cx", String(72 + offsetX));
+        if (rightIris && centers[idx]) {
+          rightIris.setAttribute("cx", String(centers[idx].r + offsetX));
+          rightPupil.setAttribute("cx", String(centers[idx].r + offsetX));
         }
       });
     };
-
     updateEyePositions();
-  }, [cursorPos]);
+  }, [cursorPos, isTypingPassword]);
+
+  const handlePasswordChange = (e) => {
+    setPass(e.target.value);
+    setIsTypingPassword(e.target.value.length > 0);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,13 +107,11 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
 
   return (
     <div className="auth-page">
-      {/* Logo */}
       <div className="auth-logo">
         <div className="logo-dot"></div>
         TribeSpace
       </div>
 
-      {/* Auth Card */}
       <div className="auth-card">
         <div className="tabs">
           <div 
@@ -131,7 +154,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
                   id="login-pass" 
                   placeholder="••••••••"
                   value={pass}
-                  onChange={(e) => setPass(e.target.value)}
+                  onChange={handlePasswordChange}
                 />
                 <button className="pass-toggle" onClick={(e) => togglePass('login-pass', e.target)}>Show</button>
               </div>
@@ -195,7 +218,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
                   id="signup-pass" 
                   placeholder="Min. 8 characters"
                   value={pass}
-                  onChange={(e) => setPass(e.target.value)}
+                  onChange={handlePasswordChange}
                 />
                 <button className="pass-toggle" onClick={(e) => togglePass('signup-pass', e.target)}>Show</button>
               </div>
@@ -221,10 +244,8 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
         )}
       </div>
 
-      {/* Characters Stage */}
       <div id="characters-stage">
-        {/* Character 1: Far Left — curly hair, teal shirt */}
-        <div className="char-wrap" ref={el => characterRefs.current[0] = el} style={{left:"2%",transform:"scale(0.72) rotate(-8deg)",zIndex:1}}>
+        <div className="char-wrap" ref={el => characterRefs.current[0] = el} style={{left:"1%",transform:"scale(0.65) rotate(-10deg)",zIndex:1}}>
           <svg width="110" height="180" viewBox="0 0 110 180">
             <ellipse cx="55" cy="155" rx="38" ry="28" fill="#26c6da"/>
             <rect x="46" y="115" width="18" height="16" rx="6" fill="#f5c5a3"/>
@@ -257,8 +278,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           </svg>
         </div>
 
-        {/* Character 2: Left — glasses, warm skin */}
-        <div className="char-wrap" ref={el => characterRefs.current[1] = el} style={{left:"14%",transform:"scale(0.82) rotate(-4deg)",zIndex:2}}>
+        <div className="char-wrap" ref={el => characterRefs.current[1] = el} style={{left:"12%",transform:"scale(0.75) rotate(-5deg)",zIndex:2}}>
           <svg width="120" height="190" viewBox="0 0 120 190">
             <ellipse cx="60" cy="165" rx="42" ry="28" fill="#e67e22"/>
             <rect x="50" y="123" width="20" height="16" rx="6" fill="#c68642"/>
@@ -290,8 +310,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           </svg>
         </div>
 
-        {/* Character 3: Center — pink glasses, dark skin */}
-        <div className="char-wrap" ref={el => characterRefs.current[2] = el} style={{left:"50%",transform:"translateX(-50%) scale(1.08)",zIndex:6}}>
+        <div className="char-wrap" ref={el => characterRefs.current[2] = el} style={{left:"30%",transform:"translateX(-50%) scale(0.95)",zIndex:5}}>
           <svg width="140" height="210" viewBox="0 0 140 210">
             <ellipse cx="70" cy="185" rx="50" ry="30" fill="#9b59b6"/>
             <rect x="58" y="140" width="24" height="20" rx="7" fill="#4a2040"/>
@@ -326,8 +345,36 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           </svg>
         </div>
 
-        {/* Character 4: Right — baseball cap, light skin */}
-        <div className="char-wrap" ref={el => characterRefs.current[3] = el} style={{right:"22%",transform:"scale(0.88) rotate(3deg)",zIndex:4}}>
+        <div className="char-wrap" ref={el => characterRefs.current[3] = el} style={{left:"50%",transform:"translateX(-50%) scale(1.1)",zIndex:7}}>
+          <svg width="130" height="220" viewBox="0 0 130 220">
+            <ellipse cx="65" cy="195" rx="45" ry="30" fill="#7c4dff"/>
+            <rect x="54" y="145" width="22" height="18" rx="6" fill="#8d6e63"/>
+            <ellipse cx="65" cy="120" rx="42" ry="45" fill="#8d6e63"/>
+            <ellipse cx="65" cy="75" rx="40" ry="25" fill="#2d1b69"/>
+            <ellipse cx="20" cy="100" rx="12" ry="18" fill="#2d1b69"/>
+            <ellipse cx="110" cy="100" rx="12" ry="18" fill="#2d1b69"/>
+            <ellipse cx="20" cy="122" rx="8" ry="11" fill="#8d6e63"/>
+            <ellipse cx="110" cy="122" rx="8" ry="11" fill="#8d6e63"/>
+            <g>
+              <circle cx="48" cy="120" r="15" fill="white"/>
+              <circle id="c4-li" cx="48" cy="120" r="9" fill="#4caf50"/>
+              <circle id="c4-lp" cx="48" cy="120" r="5" fill="#111"/>
+              <circle cx="45" cy="116" r="2.5" fill="white"/>
+              <circle cx="82" cy="120" r="15" fill="white"/>
+              <circle id="c4-ri" cx="82" cy="120" r="9" fill="#4caf50"/>
+              <circle id="c4-rp" cx="82" cy="120" r="5" fill="#111"/>
+              <circle cx="79" cy="116" r="2.5" fill="white"/>
+            </g>
+            <path d="M 35 105 Q 48 98 61 105" stroke="#2d1b69" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <path d="M 69 105 Q 82 98 95 105" stroke="#2d1b69" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <ellipse cx="65" cy="135" rx="5" ry="4" fill="#6d4c41"/>
+            <path d="M 52 148 Q 65 160 78 148" stroke="#5d4037" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <ellipse cx="30" cy="180" rx="12" ry="20" fill="#7c4dff"/>
+            <ellipse cx="100" cy="180" rx="12" ry="20" fill="#7c4dff"/>
+          </svg>
+        </div>
+
+        <div className="char-wrap" ref={el => characterRefs.current[4] = el} style={{right:"28%",transform:"scale(0.8) rotate(4deg)",zIndex:3}}>
           <svg width="125" height="195" viewBox="0 0 125 195">
             <ellipse cx="62" cy="170" rx="44" ry="28" fill="#ff7043"/>
             <rect x="52" y="128" width="20" height="18" rx="6" fill="#fde0c0"/>
@@ -341,18 +388,48 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
             <ellipse cx="106" cy="110" rx="9" ry="11" fill="#fde0c0"/>
             <g>
               <circle cx="40" cy="108" r="14" fill="white"/>
-              <circle id="c4-li" cx="40" cy="108" r="8.5" fill="#43a047"/>
-              <circle id="c4-lp" cx="40" cy="108" r="5" fill="#111"/>
+              <circle id="c5-li" cx="40" cy="108" r="8.5" fill="#43a047"/>
+              <circle id="c5-lp" cx="40" cy="108" r="5" fill="#111"/>
               <circle cx="37" cy="104" r="2" fill="white"/>
               <circle cx="84" cy="108" r="14" fill="white"/>
-              <circle id="c4-ri" cx="84" cy="108" r="8.5" fill="#43a047"/>
-              <circle id="c4-rp" cx="84" cy="108" r="5" fill="#111"/>
+              <circle id="c5-ri" cx="84" cy="108" r="8.5" fill="#43a047"/>
+              <circle id="c5-rp" cx="84" cy="108" r="5" fill="#111"/>
               <circle cx="81" cy="104" r="2" fill="white"/>
             </g>
             <path d="M 28 93 Q 40 87 52 93" stroke="#c08040" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
             <path d="M 72 93 Q 84 87 96 93" stroke="#c08040" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
             <ellipse cx="62" cy="120" rx="5" ry="4" fill="#e8a882"/>
             <path d="M 50 132 Q 62 144 74 132" stroke="#c07050" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+          </svg>
+        </div>
+
+        <div className="char-wrap" ref={el => characterRefs.current[5] = el} style={{right:"3%",transform:"scale(0.68) rotate(8deg)",zIndex:1}}>
+          <svg width="115" height="185" viewBox="0 0 115 185">
+            <ellipse cx="57" cy="160" rx="40" ry="28" fill="#4caf50"/>
+            <rect x="48" y="120" width="18" height="16" rx="6" fill="#ffccbc"/>
+            <ellipse cx="57" cy="100" rx="38" ry="40" fill="#ffccbc"/>
+            <ellipse cx="57" cy="62" rx="38" ry="22" fill="#d84315"/>
+            <circle cx="25" cy="70" r="16" fill="#d84315"/>
+            <circle cx="38" cy="55" r="15" fill="#bf360c"/>
+            <circle cx="57" cy="50" r="16" fill="#d84315"/>
+            <circle cx="76" cy="55" r="15" fill="#bf360c"/>
+            <circle cx="89" cy="70" r="14" fill="#d84315"/>
+            <ellipse cx="18" cy="102" rx="8" ry="10" fill="#ffccbc"/>
+            <ellipse cx="96" cy="102" rx="8" ry="10" fill="#ffccbc"/>
+            <g>
+              <circle cx="40" cy="100" r="12" fill="white"/>
+              <circle id="c6-li" cx="40" cy="100" r="7" fill="#ff9800"/>
+              <circle id="c6-lp" cx="40" cy="100" r="4" fill="#111"/>
+              <circle cx="37" cy="97" r="2" fill="white"/>
+              <circle cx="74" cy="100" r="12" fill="white"/>
+              <circle id="c6-ri" cx="74" cy="100" r="7" fill="#ff9800"/>
+              <circle id="c6-rp" cx="74" cy="100" r="4" fill="#111"/>
+              <circle cx="71" cy="97" r="2" fill="white"/>
+            </g>
+            <path d="M 30 88 Q 40 83 50 88" stroke="#bf360c" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <path d="M 64 88 Q 74 83 84 88" stroke="#bf360c" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+            <ellipse cx="57" cy="112" rx="5" ry="4" fill="#e8a882"/>
+            <path d="M 45 122 Q 57 132 69 122" stroke="#c07050" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
           </svg>
         </div>
       </div>
@@ -371,7 +448,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           background: #f7f8fc;
           font-family: 'Outfit', sans-serif;
         }
-
         .auth-logo {
           display: flex;
           align-items: center;
@@ -383,14 +459,12 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           margin-bottom: 28px;
           z-index: 20;
         }
-
         .logo-dot {
           width: 10px;
           height: 10px;
           border-radius: 50%;
           background: #3b6ef8;
         }
-
         .auth-card {
           background: #ffffff;
           border-radius: 24px;
@@ -400,7 +474,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           position: relative;
           z-index: 20;
         }
-
         .tabs {
           display: flex;
           background: #f7f8fc;
@@ -408,7 +481,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           padding: 4px;
           margin-bottom: 26px;
         }
-
         .tab {
           flex: 1;
           padding: 9px 0;
@@ -421,13 +493,11 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           transition: all 0.25s;
           user-select: none;
         }
-
         .tab.active {
           background: #ffffff;
           color: #0f0f14;
           box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-
         .auth-title {
           font-family: 'DM Serif Display', serif;
           font-size: 1.6rem;
@@ -435,17 +505,14 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           margin-bottom: 4px;
           line-height: 1.2;
         }
-
         .auth-sub {
           font-size: 0.82rem;
           color: #6b7280;
           margin-bottom: 24px;
         }
-
         .field {
           margin-bottom: 14px;
         }
-
         .field label {
           display: block;
           font-size: 0.78rem;
@@ -454,7 +521,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           margin-bottom: 6px;
           letter-spacing: 0.2px;
         }
-
         .field input {
           width: 100%;
           padding: 12px 16px;
@@ -468,20 +534,16 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           transition: border-color 0.2s, box-shadow 0.2s;
           box-sizing: border-box;
         }
-
         .field input:focus {
           border-color: #3b6ef8;
           box-shadow: 0 0 0 4px rgba(59,110,248,0.1);
         }
-
         .field input::placeholder {
           color: #c0c4cc;
         }
-
         .pass-wrap {
           position: relative;
         }
-
         .pass-toggle {
           position: absolute;
           right: 14px;
@@ -495,7 +557,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           font-family: 'Outfit', sans-serif;
           font-weight: 500;
         }
-
         .row-opt {
           display: flex;
           justify-content: space-between;
@@ -503,7 +564,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           margin-bottom: 20px;
           font-size: 0.78rem;
         }
-
         .remember {
           display: flex;
           align-items: center;
@@ -511,7 +571,6 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           color: #6b7280;
           cursor: pointer;
         }
-
         .remember input {
           width: auto;
           padding: 0;
@@ -519,13 +578,11 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           box-shadow: none;
           accent-color: #3b6ef8;
         }
-
         .forgot {
           color: #3b6ef8;
           font-weight: 600;
           cursor: pointer;
         }
-
         .btn-primary {
           width: 100%;
           padding: 14px;
@@ -541,17 +598,14 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           margin-bottom: 14px;
           letter-spacing: 0.3px;
         }
-
         .btn-primary:hover:not(:disabled) {
           background: #1e2030;
           transform: translateY(-1px);
         }
-
         .btn-primary:disabled {
           opacity: 0.7;
           cursor: not-allowed;
         }
-
         .divider {
           display: flex;
           align-items: center;
@@ -560,14 +614,12 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           color: #c0c4cc;
           margin-bottom: 14px;
         }
-
         .divider::before, .divider::after {
           content: '';
           flex: 1;
           height: 1px;
           background: #e5e7eb;
         }
-
         .btn-google {
           width: 100%;
           padding: 12px;
@@ -585,25 +637,21 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           cursor: pointer;
           transition: background 0.2s;
         }
-
         .btn-google:hover {
           background: #f7f8fc;
         }
-
         .switch-text {
           text-align: center;
           font-size: 0.8rem;
           color: #6b7280;
           margin-top: 16px;
         }
-
         .switch-text a {
           color: #3b6ef8;
           font-weight: 700;
           cursor: pointer;
           text-decoration: none;
         }
-
         #characters-stage {
           position: absolute;
           bottom: -20px;
@@ -612,11 +660,10 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
           display: flex;
           align-items: flex-end;
           justify-content: center;
-          height: 220px;
+          height: 240px;
           pointer-events: none;
           z-index: 10;
         }
-
         .char-wrap {
           position: absolute;
           bottom: 0;
