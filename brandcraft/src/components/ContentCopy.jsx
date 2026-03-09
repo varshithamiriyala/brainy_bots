@@ -1,9 +1,51 @@
 import { useState } from "react";
 import { callAIJSON } from "../utils/api";
-import { SkeletonCard, OutputActions, GenerateMorePanel, ToolSection } from "./UI";
+import { SkeletonCard, OutputActions, GenerateMorePanel } from "./UI";
+
+// ─── Shared Page Shell (same pattern as BrandIdentity) ─────────────────────────
+function PageShell({ emoji, title, desc, tools, activeId, onSetActive, children }) {
+  return (
+    <div style={{ display: "flex", minHeight: "calc(100vh - 64px)", gap: 0 }}>
+      <aside style={{
+        width: 234, flexShrink: 0, borderRight: "1px solid var(--border)",
+        paddingBottom: 40, background: "var(--bg2)",
+      }}>
+        <div style={{ position: "sticky", top: 0, paddingTop: 32 }}>
+          <div style={{ padding: "0 20px 24px" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 6, fontFamily: "Fredoka One" }}>{title}</h1>
+            <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
+          </div>
+          <div style={{ padding: "0 10px" }}>
+            {tools.map(t => (
+              <div key={t.id} onClick={() => onSetActive(t.id)} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "11px 14px", borderRadius: 12, cursor: "pointer", marginBottom: 3,
+                background: activeId === t.id ? "var(--teal-glow)" : "transparent",
+                border: `1.5px solid ${activeId === t.id ? "var(--teal)" : "transparent"}`,
+                color: activeId === t.id ? "var(--teal)" : "var(--text2)",
+                fontWeight: activeId === t.id ? 700 : 500,
+                fontSize: 13, transition: "all 0.18s ease",
+              }}
+              onMouseEnter={e => { if (activeId !== t.id) e.currentTarget.style.background = "var(--teal-glow)"; }}
+              onMouseLeave={e => { if (activeId !== t.id) e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{t.emoji}</span>
+                <span>{t.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+      <main style={{ flex: 1, minWidth: 0, padding: "32px 40px 80px", overflowY: "auto" }}>
+        {children}
+      </main>
+    </div>
+  );
+}
 
 // ─── Ad Copy ───────────────────────────────────────────────────────────────────
-export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
+function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [platform, setPlatform] = useState("Instagram");
   const [goal, setGoal] = useState("Awareness");
   const [rounds, setRounds] = useState([]);
@@ -25,7 +67,11 @@ export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, sele
   };
 
   return (
-    <ToolSection title="Ad Copy Generator" desc="Write ads that actually convert.">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>📣 Ad Copy Generator</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>Write ads that actually convert.</p>
+      </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <select className="select-base" style={{ width: "auto", minWidth: 160 }} value={platform} onChange={e => setPlatform(e.target.value)}>
           {["Instagram","Facebook","Google","LinkedIn","TikTok"].map(p => <option key={p}>{p}</option>)}
@@ -45,14 +91,14 @@ export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, sele
             {round.ads.map((ad, i) => {
               const id = `ad-${ri}-${i}`;
               return (
-                <div key={i} className="card output-card">
+                <div key={i} className="card output-card" style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, color: "var(--teal)", fontWeight: 600 }}>Variation {i + 1}</div>
+                    <div style={{ fontSize: 11, color: "var(--teal)", fontWeight: 700 }}>Variation {i + 1}</div>
                     <OutputActions text={`${ad.headline}\n${ad.body}\n${ad.cta}`} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Ad Copy"] === id} feature="Ad Copy" id={id} />
                   </div>
-                  <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{ad.headline}</div>
-                  <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, marginBottom: 10 }}>{ad.body}</p>
-                  <div style={{ display: "inline-block", padding: "6px 16px", background: "var(--teal-glow)", border: "1px solid rgba(78,205,196,0.3)", borderRadius: 8, fontSize: 13, color: "var(--teal)", fontWeight: 600 }}>{ad.cta}</div>
+                  <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 8, color: "var(--text)" }}>{ad.headline}</div>
+                  <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, marginBottom: 12 }}>{ad.body}</p>
+                  <div style={{ display: "inline-block", padding: "6px 18px", background: "var(--teal-glow)", border: "1px solid var(--teal)", borderRadius: 8, fontSize: 13, color: "var(--teal)", fontWeight: 700 }}>{ad.cta}</div>
                 </div>
               );
             })}
@@ -63,12 +109,12 @@ export function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, sele
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["More Urgent","More Casual","Shorter","Longer","Funnier","More Direct","Different Angle"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Social Bio ────────────────────────────────────────────────────────────────
-export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
+function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [platform, setPlatform] = useState("Instagram");
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -89,7 +135,11 @@ export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, s
   };
 
   return (
-    <ToolSection title="Social Media Bio Generator" desc="Bios that make people hit follow.">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>🌟 Social Media Bio</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>Bios that make people hit follow.</p>
+      </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <select className="select-base" style={{ width: "auto", minWidth: 160 }} value={platform} onChange={e => setPlatform(e.target.value)}>
           {["Instagram","Twitter","LinkedIn","TikTok","YouTube"].map(p => <option key={p}>{p}</option>)}
@@ -106,15 +156,15 @@ export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, s
             {round.bios.map((bio, i) => {
               const id = `bio-${ri}-${i}`;
               return (
-                <div key={i} className="card output-card">
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 11, color: "var(--teal)", fontWeight: 600 }}>{bio.length}</span>
+                <div key={i} className="card output-card" style={{ padding: "16px 18px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                    <span style={{ fontSize: 11, color: "var(--teal)", fontWeight: 700 }}>{bio.length}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontSize: 11, color: "var(--text3)" }}>{bio.charCount || bio.text?.length || 0} chars</span>
                       <OutputActions text={bio.text} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Social Bio"] === id} feature="Social Bio" id={id} />
                     </div>
                   </div>
-                  <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{bio.text}</p>
+                  <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap", color: "var(--text)" }}>{bio.text}</p>
                 </div>
               );
             })}
@@ -125,24 +175,20 @@ export function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, s
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["Add Emoji","Remove Emoji","More Punchy","More Professional","Add CTA","Shorter","Funnier"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Email Builder ─────────────────────────────────────────────────────────────
-export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect, toolOutputs, saveToolOutput, getToolOutputs }) {
+function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect, saveToolOutput, getToolOutputs }) {
   const [type, setType] = useState("Welcome");
   const [rounds, setRounds] = useState(() => getToolOutputs ? getToolOutputs("email-builder") : []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const generate = async (spec = "") => {
-    if (!brandProfile) {
-      setError("Please complete your brand profile first");
-      return;
-    }
-    setLoading(true);
-    setError(null);
+    if (!brandProfile) { setError("Please complete your brand profile first"); return; }
+    setLoading(true); setError(null);
     try {
       const result = await callAIJSON(
         "You are an email marketing expert. Return JSON: {subject: string, preheader: string, body: string}. Body should be well-structured email copy.",
@@ -150,39 +196,20 @@ export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSe
       );
       if (result.subject) {
         const newRound = { ...result, spec, round: rounds.length + 1 };
-        setRounds(prev => {
-          const updated = [...prev, newRound];
-          // Save to persistence
-          if (saveToolOutput) {
-            saveToolOutput("email-builder", newRound);
-          }
-          return updated;
-        });
+        setRounds(prev => { const updated = [...prev, newRound]; if (saveToolOutput) saveToolOutput("email-builder", newRound); return updated; });
         onOutput("Email Template", result.subject);
-      } else if (result.error) {
-        setError("Failed to generate email. Please try again.");
-      }
-    } catch (err) {
-      setError("Connection error. Please check your API keys and try again.");
-    }
+      } else { setError("Failed to generate email. Please try again."); }
+    } catch { setError("Connection error. Please try again."); }
     setLoading(false);
   };
 
   return (
-    <ToolSection title="Email Template Builder" desc="Emails your audience will actually open.">
-      {error && (
-        <div style={{ 
-          padding: "12px 16px", 
-          background: "rgba(255,107,107,0.1)", 
-          border: "1px solid rgba(255,107,107,0.3)", 
-          borderRadius: 8, 
-          marginBottom: 20,
-          color: "#FF6B6B",
-          fontSize: 14
-        }}>
-          ⚠️ {error}
-        </div>
-      )}
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>💌 Email Template Builder</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>Emails your audience will actually open.</p>
+      </div>
+      {error && <div style={{ padding: "12px 16px", background: "rgba(255,107,107,0.1)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 8, marginBottom: 20, color: "#FF6B6B", fontSize: 14 }}>⚠️ {error}</div>}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
         <select className="select-base" style={{ width: "auto", minWidth: 180 }} value={type} onChange={e => setType(e.target.value)}>
           {["Welcome","Promotional","Newsletter","Follow-up","Abandoned Cart"].map(t => <option key={t}>{t}</option>)}
@@ -195,13 +222,13 @@ export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSe
       {rounds.map((round, ri) => (
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round} · {type}</div>
-          <div className="card output-card">
+          <div className="card output-card" style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
               <OutputActions text={`Subject: ${round.subject}\n\n${round.body}`} onSelect={onSelect} selected={selectedOutputs["Email Templates"] === `email-${ri}`} feature="Email Templates" id={`email-${ri}`} />
             </div>
-            <div style={{ padding: "14px 16px", background: "rgba(255,255,255,0.02)", borderRadius: 8, marginBottom: 12, border: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4 }}>SUBJECT LINE</div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{round.subject}</div>
+            <div style={{ padding: "12px 16px", background: "var(--bg2)", borderRadius: 10, marginBottom: 14, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4, fontWeight: 700, letterSpacing: "0.05em" }}>SUBJECT LINE</div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text)" }}>{round.subject}</div>
               {round.preheader && <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 4 }}>{round.preheader}</div>}
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.8, color: "var(--text2)", whiteSpace: "pre-wrap" }}>{round.body}</div>
@@ -212,12 +239,12 @@ export function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSe
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["More Formal","More Friendly","Add Urgency","Shorter","Add Offer","Catchier Subject","Add PS"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Content Calendar ──────────────────────────────────────────────────────────
-export function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
+function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [topic, setTopic] = useState("");
   const [contentType, setContentType] = useState("Post");
   const [frequency, setFrequency] = useState("Daily");
@@ -240,7 +267,11 @@ export function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, o
   };
 
   return (
-    <ToolSection title="Content Calendar" desc="7 days of ready-to-post content ideas.">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>📅 Content Calendar</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>7 days of ready-to-post content ideas.</p>
+      </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
         <input className="input-base" placeholder="Campaign or topic idea..." value={topic} onChange={e => setTopic(e.target.value)} style={{ flex: 1, minWidth: 200 }} />
         <select className="select-base" style={{ width: "auto", minWidth: 120 }} value={contentType} onChange={e => setContentType(e.target.value)}>
@@ -258,27 +289,27 @@ export function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, o
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}</div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-            <OutputActions text={`Content Calendar for ${topic || "general"} - ${contentType} - ${frequency}\n\n${round.calendar.map(row => `${row.day}: ${row.idea} (${row.platform}) #${row.hashtags?.join(' #') || ''}`).join('\n')}`} onSelect={onSelect} selected={selectedOutputs["Content Calendar"] === `calendar-${ri}`} feature="Content Calendar" id={`calendar-${ri}`} />
+            <OutputActions text={`Content Calendar\n\n${round.calendar.map(row => `${row.day}: ${row.idea} (${row.platform})`).join('\n')}`} onSelect={onSelect} selected={selectedOutputs["Content Calendar"] === `calendar-${ri}`} feature="Content Calendar" id={`calendar-${ri}`} />
           </div>
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--border)" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                <tr style={{ background: "var(--bg2)" }}>
                   {["Day","Platform","Post Idea","Hashtags"].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "var(--text2)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                    <th key={h} style={{ padding: "12px 14px", textAlign: "left", color: "var(--text2)", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {round.calendar.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "12px", fontWeight: 600, color: "var(--teal)" }}>{row.day}</td>
-                    <td style={{ padding: "12px", color: "var(--text2)" }}>{row.platform}</td>
-                    <td style={{ padding: "12px", lineHeight: 1.5 }}>{row.idea}</td>
-                    <td style={{ padding: "12px" }}>
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "transparent" : "var(--bg2)" }}>
+                    <td style={{ padding: "12px 14px", fontWeight: 700, color: "var(--teal)", whiteSpace: "nowrap" }}>{row.day}</td>
+                    <td style={{ padding: "12px 14px", color: "var(--text2)", whiteSpace: "nowrap" }}>{row.platform}</td>
+                    <td style={{ padding: "12px 14px", lineHeight: 1.5, color: "var(--text)" }}>{row.idea}</td>
+                    <td style={{ padding: "12px 14px" }}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                         {(row.hashtags || []).slice(0, 3).map(h => (
-                          <span key={h} style={{ padding: "2px 8px", background: "var(--teal-glow)", border: "1px solid rgba(78,205,196,0.2)", borderRadius: 4, color: "var(--teal)", fontSize: 11 }}>#{h.replace("#","")}</span>
+                          <span key={h} style={{ padding: "2px 8px", background: "var(--teal-glow)", border: "1px solid var(--teal)", borderRadius: 4, color: "var(--teal)", fontSize: 11, fontWeight: 600 }}>#{h.replace("#","")}</span>
                         ))}
                       </div>
                     </td>
@@ -293,20 +324,31 @@ export function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, o
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["Different Platforms","More Variety","Focus on Reels","Add Stories","More Hashtags","Product Launch Focus"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Content Copy Page ─────────────────────────────────────────────────────────
 export function ContentCopyPage({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect, toolOutputs, saveToolOutput, getToolOutputs }) {
+  const [activeTool, setActiveTool] = useState("ads");
+
+  const tools = [
+    { id: "ads",      emoji: "📣", label: "Ad Copy" },
+    { id: "bio",      emoji: "🌟", label: "Social Bio" },
+    { id: "email",    emoji: "💌", label: "Email Builder" },
+    { id: "calendar", emoji: "📅", label: "Content Calendar" },
+  ];
+
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Content & Copy</h1>
-      <p style={{ color: "var(--text2)", marginBottom: 40 }}>AI-powered content that sounds like you, scales like a team.</p>
-      <AdCopyTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-      <SocialBioTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-      <EmailBuilderTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} toolOutputs={toolOutputs} saveToolOutput={saveToolOutput} getToolOutputs={getToolOutputs} />
-      <ContentCalendarTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-    </div>
+    <PageShell
+      emoji="✍️" title="Content & Copy"
+      desc="AI-powered content that sounds like you, scales like a team."
+      tools={tools} activeId={activeTool} onSetActive={setActiveTool}
+    >
+      {activeTool === "ads"      && <AdCopyTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+      {activeTool === "bio"      && <SocialBioTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+      {activeTool === "email"    && <EmailBuilderTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} saveToolOutput={saveToolOutput} getToolOutputs={getToolOutputs} />}
+      {activeTool === "calendar" && <ContentCalendarTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+    </PageShell>
   );
 }

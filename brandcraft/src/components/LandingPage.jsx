@@ -1,6 +1,70 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "./Icon";
 import ToolsCarousel from "./ToolsCarousel";
+
+// ─── Magic Burst Transition ───────────────────────────────────────────────────
+function MagicBurst({ onDone }) {
+  const particles = Array.from({ length: 28 }, (_, i) => ({
+    id: i,
+    x: 5 + (i * 13.7) % 90,
+    y: 5 + (i * 17.3) % 88,
+    size: 18 + (i % 4) * 10,
+    delay: (i * 0.038),
+    emoji: ["✨","⭐","🌟","💫","✦","❋","🔆"][i % 7],
+    tx: ((i % 7) - 3) * 28,
+    ty: ((i % 5) - 2) * 28,
+    rot: i * 47,
+  }));
+
+  useEffect(() => {
+    const t = setTimeout(onDone, 1100);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <>
+      <style>{`
+        @keyframes magicOverlay {
+          0%   { opacity: 0; }
+          25%  { opacity: 1; }
+          75%  { opacity: 0.6; }
+          100% { opacity: 0; }
+        }
+        @keyframes sparkleUp {
+          0%   { opacity: 0; transform: translate(0,0) scale(0) rotate(0deg); }
+          35%  { opacity: 1; transform: translate(calc(var(--tx)*1px), calc(var(--ty)*1px)) scale(1.3) rotate(calc(var(--rot)*1deg)); }
+          100% { opacity: 0; transform: translate(calc(var(--tx)*2.5px), calc(var(--ty)*2.5px - 50px)) scale(0.2) rotate(calc(var(--rot)*2.5deg)); }
+        }
+        @keyframes wandPop {
+          0%   { opacity:0; transform: translate(-50%,-50%) scale(0) rotate(-20deg); }
+          40%  { opacity:1; transform: translate(-50%,-50%) scale(1.3) rotate(15deg); }
+          100% { opacity:0; transform: translate(-50%,-50%) scale(0.5) rotate(40deg); }
+        }
+        @keyframes cardIn {
+          from { opacity: 0; transform: translateY(18px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+      <div style={{ position:"fixed", inset:0, zIndex:9999, pointerEvents:"none",
+        background:"rgba(253,246,236,0.55)", animation:"magicOverlay 1.1s ease forwards" }}>
+        {particles.map(p => (
+          <div key={p.id} style={{
+            position:"absolute", left:`${p.x}%`, top:`${p.y}%`,
+            fontSize:p.size,
+            "--tx": p.tx, "--ty": p.ty, "--rot": p.rot,
+            animation:`sparkleUp 0.9s ${p.delay}s ease-out both`,
+            filter:"drop-shadow(0 0 6px rgba(124,77,255,0.7))",
+          }}>{p.emoji}</div>
+        ))}
+        <div style={{
+          position:"absolute", left:"50%", top:"50%", fontSize:80,
+          animation:"wandPop 1s 0.05s ease-out both",
+          filter:"drop-shadow(0 0 24px rgba(124,77,255,0.9))",
+        }}>🪄</div>
+      </div>
+    </>
+  );
+}
 
 // ─── Floating Pill Nav ────────────────────────────────────────────────────────
 function FloatingPillNav() {
@@ -14,7 +78,7 @@ function FloatingPillNav() {
   const links = [
     { label: "Features", emoji: "✨", id: "features" },
     { label: "How It Works", emoji: "🗺️", id: "how-it-works" },
-    { label: "Blog", emoji: "✍️", id: "blog" },
+    { label: "Testimonials", emoji: "💬", id: "testimonials" },
   ];
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -50,20 +114,20 @@ function FloatingPillNav() {
   );
 }
 
-// ─── Scroll Reveal Hook ───────────────────────────────────────────────────────
 function useScrollReveal() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add("visible"); }),
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
     );
-    document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
-    return () => observer.disconnect();
+    const t = setTimeout(() => {
+      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    }, 80);
+    return () => { clearTimeout(t); observer.disconnect(); };
   }, []);
 }
 
-// ─── Kinetic Hero Text ────────────────────────────────────────────────────────
-function KineticText({ text, delay = 0, className = "" }) {
+function KineticText({ text, delay = 0 }) {
   return (
     <span aria-label={text} style={{ display: "inline" }}>
       {text.split(" ").map((word, wi) => (
@@ -75,7 +139,6 @@ function KineticText({ text, delay = 0, className = "" }) {
   );
 }
 
-// ─── Infinite Marquee ─────────────────────────────────────────────────────────
 const marqueeItems = [
   { emoji: "✨", text: "Brand Names" }, { emoji: "🎨", text: "Logo Creator" },
   { emoji: "🌈", text: "Color Palette" }, { emoji: "🖋️", text: "Typography" },
@@ -95,10 +158,8 @@ function Marquee({ reverse = false }) {
           <div key={i} style={{
             display: "flex", alignItems: "center", gap: 10,
             padding: "10px 24px", margin: "0 8px",
-            background: "rgba(255,252,248,0.85)",
-            backdropFilter: "blur(12px)",
-            border: "1.5px solid rgba(124,77,255,0.12)",
-            borderRadius: 99,
+            background: "rgba(255,252,248,0.85)", backdropFilter: "blur(12px)",
+            border: "1.5px solid rgba(124,77,255,0.12)", borderRadius: 99,
             fontSize: 14, fontWeight: 700, color: "#2D1B69",
             fontFamily: "Nunito", whiteSpace: "nowrap",
             boxShadow: "0 2px 8px rgba(124,77,255,0.08)",
@@ -112,7 +173,7 @@ function Marquee({ reverse = false }) {
   );
 }
 
-// ─── Sticky Scroll Story ──────────────────────────────────────────────────────
+// ─── Story Steps ──────────────────────────────────────────────────────────────
 const storySteps = [
   { chapter: "Step 01", title: "Whisper Your Vision", desc: "Tell us your industry, vibe, and goals. Our AI learns what makes your brand unique before creating a single asset.", emoji: "💬", accent: "#7C4DFF" },
   { chapter: "Step 02", title: "AI Weaves the Magic", desc: "Watch as 13 powerful tools generate names, colors, logos, typography and more — all tailored to your exact profile.", emoji: "⚡", accent: "#FF6B9D" },
@@ -122,100 +183,251 @@ const storySteps = [
 
 function StickyStory() {
   const [activeStep, setActiveStep] = useState(0);
-  const containerRef = useRef(null);
+  const [animKey, setAnimKey] = useState(0);
+  const autoRef = useRef(null);
+
+  const goTo = (i) => {
+    setActiveStep(i);
+    setAnimKey(k => k + 1);
+    clearInterval(autoRef.current);
+    autoRef.current = setInterval(() => {
+      setActiveStep(s => { const next = (s + 1) % storySteps.length; setAnimKey(k => k + 1); return next; });
+    }, 4000);
+  };
 
   useEffect(() => {
-    const onScroll = () => {
-      if (!containerRef.current) return;
-      const { top, height } = containerRef.current.getBoundingClientRect();
-      const progress = Math.max(0, Math.min(1, -top / (height - window.innerHeight)));
-      setActiveStep(Math.min(storySteps.length - 1, Math.floor(progress * storySteps.length)));
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    autoRef.current = setInterval(() => {
+      setActiveStep(s => { const next = (s + 1) % storySteps.length; setAnimKey(k => k + 1); return next; });
+    }, 4000);
+    return () => clearInterval(autoRef.current);
   }, []);
 
   const step = storySteps[activeStep];
 
   return (
-    <div ref={containerRef} style={{ height: `${storySteps.length * 80}vh`, position: "relative" }}>
-      <div style={{
-        position: "sticky", top: 0, height: "100vh",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "linear-gradient(135deg, rgba(124,77,255,0.04) 0%, rgba(255,107,157,0.04) 100%)",
-        overflow: "hidden",
-      }}>
-        {/* Animated mesh blob */}
-        <div style={{
-          position: "absolute", width: 500, height: 500, borderRadius: "50%",
-          background: `radial-gradient(circle, ${step.accent}22 0%, transparent 65%)`,
-          filter: "blur(60px)",
-          transition: "background 0.8s ease, transform 0.8s ease",
-          transform: `translate(${activeStep % 2 === 0 ? "-10%" : "10%"}, ${activeStep > 1 ? "10%" : "-10%"})`,
-          pointerEvents: "none",
-        }} />
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 48px 80px" }}>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 48, flexWrap: "wrap" }}>
+        {storySteps.map((s, i) => (
+          <button key={i} onClick={() => goTo(i)} style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 20px", borderRadius: 99, border: "2px solid",
+            borderColor: i === activeStep ? s.accent : "rgba(124,77,255,0.15)",
+            background: i === activeStep ? `${s.accent}14` : "rgba(255,252,248,0.8)",
+            color: i === activeStep ? s.accent : "#9B8CB8",
+            fontFamily: "Nunito", fontWeight: 800, fontSize: 13, cursor: "pointer",
+            transition: "all 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+            transform: i === activeStep ? "translateY(-2px) scale(1.04)" : "scale(1)",
+            boxShadow: i === activeStep ? `0 6px 20px ${s.accent}28` : "none",
+          }}>
+            <span style={{ fontSize: 16 }}>{s.emoji}</span>{s.chapter}
+          </button>
+        ))}
+      </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, maxWidth: 1000, padding: "0 48px", zIndex: 1, width: "100%" }}>
-          {/* Left — step indicators */}
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 24 }}>
-            {storySteps.map((s, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: 16,
-                opacity: i === activeStep ? 1 : 0.35,
-                transform: `translateX(${i === activeStep ? "0" : "-8px"})`,
-                transition: "all 0.5s var(--ease-spring)",
-              }}>
-                <div style={{
-                  width: i === activeStep ? 48 : 36, height: i === activeStep ? 48 : 36,
-                  borderRadius: "50%",
-                  background: i === activeStep ? `linear-gradient(135deg, ${s.accent}, ${s.accent}88)` : "rgba(124,77,255,0.1)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: i === activeStep ? 22 : 18,
-                  transition: "all 0.4s var(--ease-spring)",
-                  boxShadow: i === activeStep ? `0 8px 24px ${s.accent}44` : "none",
-                  flexShrink: 0,
-                }}>
-                  {s.emoji}
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: i === activeStep ? s.accent : "#A89BC0", textTransform: "uppercase", letterSpacing: "1px", fontFamily: "Nunito" }}>{s.chapter}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#2D1B69", fontFamily: "Fredoka One" }}>{s.title}</div>
-                </div>
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0,
+        background: "rgba(255,252,248,0.85)", backdropFilter: "blur(20px)",
+        border: `1.5px solid ${step.accent}22`, borderRadius: 28, overflow: "hidden",
+        boxShadow: `0 20px 60px ${step.accent}14`,
+        transition: "border-color 0.5s, box-shadow 0.5s", minHeight: 380,
+      }}>
+        <div style={{
+          padding: "48px 40px", borderRight: "1px solid rgba(124,77,255,0.08)",
+          display: "flex", flexDirection: "column", justifyContent: "center", gap: 20,
+          background: `linear-gradient(160deg, ${step.accent}06 0%, transparent 100%)`,
+          transition: "background 0.5s",
+        }}>
+          {storySteps.map((s, i) => (
+            <div key={i} onClick={() => goTo(i)} style={{
+              display: "flex", alignItems: "center", gap: 16,
+              padding: "14px 16px", borderRadius: 16, cursor: "pointer",
+              opacity: i === activeStep ? 1 : 0.4,
+              background: i === activeStep ? `${s.accent}10` : "transparent",
+              border: `1.5px solid ${i === activeStep ? s.accent + "30" : "transparent"}`,
+              transform: i === activeStep ? "translateX(4px)" : "translateX(0)",
+              transition: "all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+            }}>
+              <div style={{
+                width: i === activeStep ? 46 : 38, height: i === activeStep ? 46 : 38,
+                borderRadius: "50%", flexShrink: 0,
+                background: i === activeStep ? `linear-gradient(135deg, ${s.accent}, ${s.accent}88)` : "rgba(124,77,255,0.1)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: i === activeStep ? 20 : 17,
+                boxShadow: i === activeStep ? `0 6px 20px ${s.accent}44` : "none",
+                transition: "all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+              }}>{s.emoji}</div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 800, color: i === activeStep ? s.accent : "#A89BC0", textTransform: "uppercase", letterSpacing: "1.2px", fontFamily: "Nunito", marginBottom: 2 }}>{s.chapter}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#2D1B69", fontFamily: "Fredoka One" }}>{s.title}</div>
               </div>
+            </div>
+          ))}
+        </div>
+
+        <div key={animKey} style={{ padding: "48px 40px", display: "flex", flexDirection: "column", justifyContent: "center", animation: "cardIn 0.45s cubic-bezier(0.34,1.56,0.64,1)" }}>
+          <div style={{ fontSize: 72, marginBottom: 24, filter: `drop-shadow(0 8px 24px ${step.accent}55)` }}>{step.emoji}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: step.accent, textTransform: "uppercase", letterSpacing: "1.8px", fontFamily: "Nunito", marginBottom: 10 }}>{step.chapter}</div>
+          <h3 style={{ fontFamily: "Fredoka One", fontSize: "clamp(28px,3vw,40px)", color: "#2D1B69", marginBottom: 18, lineHeight: 1.1 }}>{step.title}</h3>
+          <p style={{ fontSize: 16, color: "#6B5B8A", lineHeight: 1.8, fontFamily: "Nunito", fontWeight: 500, maxWidth: 360, marginBottom: 32 }}>{step.desc}</p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 24 }}>
+            {storySteps.map((s, i) => (
+              <div key={i} onClick={() => goTo(i)} style={{
+                height: 5, borderRadius: 99,
+                width: i === activeStep ? 36 : 10,
+                background: i === activeStep ? step.accent : "rgba(124,77,255,0.18)",
+                transition: "all 0.4s cubic-bezier(0.34,1.56,0.64,1)", cursor: "pointer",
+              }} />
             ))}
           </div>
-
-          {/* Right — active step detail */}
-          <div key={activeStep} style={{ display: "flex", flexDirection: "column", justifyContent: "center", animation: "pageEnter 0.5s var(--ease-spring)" }}>
-            <div style={{ fontSize: 80, marginBottom: 24, filter: `drop-shadow(0 8px 20px ${step.accent}44)` }}>{step.emoji}</div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: step.accent, textTransform: "uppercase", letterSpacing: "1.5px", fontFamily: "Nunito", marginBottom: 12 }}>{step.chapter}</div>
-            <h3 style={{ fontFamily: "Fredoka One", fontSize: 42, color: "#2D1B69", marginBottom: 20, lineHeight: 1.1 }}>{step.title}</h3>
-            <p style={{ fontSize: 17, color: "#6B5B8A", lineHeight: 1.8, fontFamily: "Nunito", fontWeight: 500, maxWidth: 380 }}>{step.desc}</p>
-            {/* Progress dots */}
-            <div style={{ display: "flex", gap: 8, marginTop: 32 }}>
-              {storySteps.map((_, i) => (
-                <div key={i} style={{
-                  height: 4, borderRadius: 99,
-                  width: i === activeStep ? 32 : 8,
-                  background: i === activeStep ? step.accent : "rgba(124,77,255,0.2)",
-                  transition: "all 0.4s var(--ease-spring)",
-                }} />
-              ))}
-            </div>
-          </div>
+          <button onClick={() => goTo((activeStep + 1) % storySteps.length)} style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "11px 22px", borderRadius: 99,
+            background: `linear-gradient(135deg, ${step.accent}, ${step.accent}bb)`,
+            color: "#fff", border: "none", cursor: "pointer",
+            fontFamily: "Nunito", fontWeight: 800, fontSize: 13,
+            boxShadow: `0 6px 20px ${step.accent}38`,
+            transition: "transform 0.2s, box-shadow 0.2s", alignSelf: "flex-start",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; }}
+          onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; }}
+          >
+            {activeStep < storySteps.length - 1 ? `Next: ${storySteps[activeStep + 1].title} →` : "Start Your Story ✨"}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Floating Stars (memoized) ────────────────────────────────────────────────
+// ─── Stats Bar ────────────────────────────────────────────────────────────────
+const stats = [
+  { value: "2,400+", label: "Founders", emoji: "👥" },
+  { value: "13", label: "AI Tools", emoji: "🛠️" },
+  { value: "98%", label: "Satisfaction", emoji: "⭐" },
+  { value: "<5 min", label: "To Launch", emoji: "🚀" },
+];
+
+function StatsBar() {
+  return (
+    <div className="reveal" style={{
+      display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0,
+      background: "rgba(255,252,248,0.85)", backdropFilter: "blur(16px)",
+      border: "1.5px solid rgba(124,77,255,0.14)", borderRadius: 24, overflow: "hidden",
+      margin: "0 auto", maxWidth: 800, boxShadow: "0 8px 32px rgba(124,77,255,0.1)",
+    }}>
+      {stats.map((s, i) => (
+        <div key={i} style={{
+          padding: "28px 20px", textAlign: "center",
+          borderRight: i < 3 ? "1px solid rgba(124,77,255,0.1)" : "none",
+          transition: "background 0.2s", cursor: "default",
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = "rgba(124,77,255,0.05)"}
+        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        >
+          <div style={{ fontSize: 22, marginBottom: 6 }}>{s.emoji}</div>
+          <div style={{ fontFamily: "Fredoka One", fontSize: 30, color: "#7C4DFF", lineHeight: 1 }}>{s.value}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#9B8CB8", fontFamily: "Nunito", marginTop: 4, textTransform: "uppercase", letterSpacing: "0.8px" }}>{s.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Testimonials ─────────────────────────────────────────────────────────────
+const testimonials = [
+  { name: "Priya K.", role: "Startup Founder", avatar: "🧕", quote: "I had a complete brand identity ready in 20 minutes. An agency would've charged $5,000. BrandCraft is pure magic.", color: "#7C4DFF" },
+  { name: "Marcus T.", role: "Freelance Designer", avatar: "👨‍💻", quote: "I use BrandCraft to show clients concept directions instantly. It's become my secret weapon for winning pitches.", color: "#FF6B9D" },
+  { name: "Sophie L.", role: "E-commerce Owner", avatar: "👩‍💼", quote: "The Brand Score helped me see what was missing. Once I hit 90, my conversion rate went up 34%. Genuinely life-changing.", color: "#FFB300" },
+  { name: "Arjun M.", role: "Creative Director", avatar: "🧑‍🎨", quote: "The AI understands nuance. It didn't spit out generic output — it felt like working with a real brand strategist.", color: "#4ECDC4" },
+];
+
+function Testimonials() {
+  return (
+    <section id="testimonials" style={{ padding: "100px 48px", scrollMarginTop: 80 }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div className="reveal" style={{ textAlign: "center", marginBottom: 56 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#7C4DFF", fontFamily: "Nunito", marginBottom: 8, textTransform: "uppercase", letterSpacing: "1.5px" }}>💬 Real Stories</div>
+          <h2 style={{ fontFamily: "Fredoka One", fontSize: "clamp(36px,4.5vw,54px)", color: "#2D1B69", marginBottom: 12, lineHeight: 1.1 }}>
+            Brands built with <span className="grad-text">BrandCraft</span>
+          </h2>
+          <p style={{ color: "#6B5B8A", fontSize: 17, fontFamily: "Nunito", fontWeight: 500 }}>Don't take our word for it — hear from the founders.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+          {testimonials.map((t, i) => (
+            <div key={i} className="reveal" style={{
+              background: "rgba(255,252,248,0.9)", backdropFilter: "blur(16px)",
+              border: "1.5px solid rgba(124,77,255,0.12)", borderRadius: 22, padding: "28px 24px",
+              position: "relative", overflow: "hidden",
+              transition: "transform 0.28s, box-shadow 0.28s", animationDelay: `${i * 0.08}s`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform="translateY(-6px)"; e.currentTarget.style.boxShadow="0 20px 50px rgba(124,77,255,0.13)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; }}
+            >
+              <div style={{ position: "absolute", top: 0, right: 0, width: 80, height: 80, background: `radial-gradient(circle at top right, ${t.color}18, transparent 70%)`, pointerEvents: "none" }} />
+              <div style={{ display: "flex", gap: 3, marginBottom: 16 }}>
+                {[...Array(5)].map((_, si) => <span key={si} style={{ color: "#FFB300", fontSize: 13 }}>★</span>)}
+              </div>
+              <p style={{ fontSize: 15, color: "#4A3860", lineHeight: 1.7, fontFamily: "Nunito", fontWeight: 500, marginBottom: 22, fontStyle: "italic" }}>"{t.quote}"</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, background: `linear-gradient(135deg, ${t.color}22, ${t.color}44)`, border: `2px solid ${t.color}33`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{t.avatar}</div>
+                <div>
+                  <div style={{ fontFamily: "Fredoka One", fontSize: 16, color: "#2D1B69" }}>{t.name}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: t.color, fontFamily: "Nunito" }}>{t.role}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Feature Highlights ───────────────────────────────────────────────────────
+const highlights = [
+  { emoji: "🧠", title: "Profile-First AI", desc: "Every tool reads your brand DNA before generating. No generic output — ever.", color: "#7C4DFF" },
+  { emoji: "📊", title: "Live Brand Score", desc: "A real-time score tracks how complete and compelling your brand identity is.", color: "#FF6B9D" },
+  { emoji: "🌍", title: "11 Languages", desc: "Generate your brand assets in English, Spanish, Japanese, Arabic and more.", color: "#FFB300" },
+  { emoji: "⚡", title: "One-Click Regen", desc: "Not feeling it? Regenerate any asset instantly with a different creative direction.", color: "#4ECDC4" },
+  { emoji: "📥", title: "Complete Brand PDF", desc: "Export every asset into a polished brand book — ready for designers or investors.", color: "#7C4DFF" },
+  { emoji: "🤖", title: "AI Brand Coach", desc: "A chat companion that answers questions and guides your brand-building journey.", color: "#FF6B9D" },
+];
+
+function HighlightCards() {
+  return (
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 48px" }}>
+      <div className="reveal" style={{ textAlign: "center", marginBottom: 52 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "#7C4DFF", fontFamily: "Nunito", marginBottom: 8, textTransform: "uppercase", letterSpacing: "1.5px" }}>📖 What Makes Us Different</div>
+        <h2 style={{ fontFamily: "Fredoka One", fontSize: "clamp(34px,4.5vw,52px)", color: "#2D1B69", lineHeight: 1.1 }}>
+          Built for storytellers, <span className="grad-text">not templates</span>
+        </h2>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
+        {highlights.map((h, i) => (
+          <div key={i} className="reveal" style={{
+            background: "rgba(255,252,248,0.85)", backdropFilter: "blur(16px)",
+            border: `1.5px solid ${h.color}1A`, borderRadius: 22, padding: "28px 24px",
+            display: "flex", gap: 18, alignItems: "flex-start",
+            transition: "transform 0.26s, box-shadow 0.26s", animationDelay: `${i * 0.06}s`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform="translateY(-5px)"; e.currentTarget.style.boxShadow=`0 16px 40px ${h.color}1A`; }}
+          onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; }}
+          >
+            <div style={{ width: 52, height: 52, borderRadius: 15, flexShrink: 0, background: `${h.color}16`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{h.emoji}</div>
+            <div>
+              <div style={{ fontFamily: "Fredoka One", fontSize: 19, color: "#2D1B69", marginBottom: 8 }}>{h.title}</div>
+              <div style={{ fontSize: 14, color: "#6B5B8A", lineHeight: 1.65, fontFamily: "Nunito", fontWeight: 500 }}>{h.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const stars = Array.from({ length: 10 }, (_, i) => ({
-  left: `${(i * 37 + 5) % 100}%`,
-  top: `${(i * 53 + 10) % 80}%`,
-  size: i % 3 === 0 ? "24px" : "16px",
-  duration: 3 + (i % 3),
-  delay: (i * 0.4) % 3,
+  left: `${(i * 37 + 5) % 100}%`, top: `${(i * 53 + 10) % 80}%`,
+  size: i % 3 === 0 ? "24px" : "16px", duration: 3 + (i % 3), delay: (i * 0.4) % 3,
 }));
 
 const HanddrawnDivider = () => (
@@ -227,25 +439,58 @@ const HanddrawnDivider = () => (
 // ─── Main LandingPage ─────────────────────────────────────────────────────────
 export default function LandingPage({ onNav }) {
   useScrollReveal();
+  const [navScrolled, setNavScrolled] = useState(false);
+  const [burst, setBurst] = useState(false);
+  const burstDestRef = useRef("signup");
+
+  useEffect(() => {
+    const fn = () => setNavScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", fn);
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+
+  const magicNav = useCallback((dest) => {
+    burstDestRef.current = dest;
+    setBurst(true);
+  }, []);
+
+  const handleBurstDone = useCallback(() => {
+    setBurst(false);
+    onNav(burstDestRef.current);
+  }, [onNav]);
 
   return (
     <div className="mesh-bg" style={{ minHeight: "100vh", overflowX: "hidden", background: "linear-gradient(180deg, #FDF6EC 0%, #FFF8F0 50%, #FFFAF3 100%)" }}>
+      {burst && <MagicBurst onDone={handleBurstDone} />}
       <FloatingPillNav />
 
-      {/* NAV */}
-      <nav className="glass" style={{
+      {/* NAV — no login button */}
+      <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        padding: "18px 48px", display: "flex", alignItems: "center", justifyContent: "space-between",
-        borderRadius: 0, borderLeft: "none", borderRight: "none", borderTop: "none",
+        padding: "16px 48px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: navScrolled ? "rgba(253,246,236,0.88)" : "transparent",
+        backdropFilter: navScrolled ? "blur(20px) saturate(160%)" : "none",
+        WebkitBackdropFilter: navScrolled ? "blur(20px) saturate(160%)" : "none",
+        borderBottom: navScrolled ? "1px solid rgba(124,77,255,0.1)" : "none",
+        transition: "all 0.35s ease",
+        boxShadow: navScrolled ? "0 4px 24px rgba(124,77,255,0.07)" : "none",
       }}>
-        <div style={{ fontFamily: "Fredoka One", fontSize: 24, color: "#7C4DFF" }}>📖 BrandCraft</div>
+        <div style={{ fontFamily: "Fredoka One", fontSize: 24, color: "#7C4DFF", display: "flex", alignItems: "center", gap: 8 }}>
+          📖 BrandCraft
+          <span style={{ fontSize: 10, fontFamily: "Nunito", fontWeight: 800, color: "#fff", background: "linear-gradient(135deg,#7C4DFF,#FF6B9D)", padding: "2px 8px", borderRadius: 99, marginLeft: 4, letterSpacing: "0.5px" }}>FREE</span>
+        </div>
         <button className="btn-primary btn-sm" onClick={() => onNav("signup")}>Start Story ✨</button>
       </nav>
 
-      {/* ── HERO ── */}
-      <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "140px 24px 60px", position: "relative", overflow: "hidden" }}>
+      {/* HERO */}
+      <section style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "140px 24px 80px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+          <div style={{ position: "absolute", top: "5%", left: "5%", width: 600, height: 600, background: "radial-gradient(circle, rgba(124,77,255,0.09) 0%, transparent 70%)", filter: "blur(60px)", borderRadius: "50%", animation: "float 12s ease-in-out infinite" }} />
+          <div style={{ position: "absolute", top: "20%", right: "3%", width: 400, height: 400, background: "radial-gradient(circle, rgba(255,107,157,0.07) 0%, transparent 70%)", filter: "blur(60px)", borderRadius: "50%", animation: "float 10s ease-in-out infinite", animationDelay: "3s" }} />
+          <div style={{ position: "absolute", bottom: "5%", left: "25%", width: 500, height: 380, background: "radial-gradient(circle, rgba(255,179,0,0.06) 0%, transparent 70%)", filter: "blur(60px)", borderRadius: "50%", animation: "float 14s ease-in-out infinite", animationDelay: "6s" }} />
+        </div>
         {stars.map((s, i) => (
-          <div key={i} style={{ position: "absolute", left: s.left, top: s.top, fontSize: s.size, animation: `float ${s.duration}s ease-in-out infinite`, animationDelay: `${s.delay}s`, pointerEvents: "none" }}>✨</div>
+          <div key={i} style={{ position: "absolute", left: s.left, top: s.top, fontSize: s.size, animation: `float ${s.duration}s ease-in-out infinite`, animationDelay: `${s.delay}s`, pointerEvents: "none", opacity: 0.55 }}>✨</div>
         ))}
 
         {/* Animated book */}
@@ -255,31 +500,36 @@ export default function LandingPage({ onNav }) {
           <div style={{ position: "absolute", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "72px", animation: "bounce 3s ease-in-out infinite", zIndex: 10 }}>✨</div>
         </div>
 
-        <div style={{ position: "relative", maxWidth: 820, zIndex: 5 }}>
-          <div className="kinetic-word" style={{ animationDelay: "0s", display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 20px", background: "rgba(124,77,255,0.1)", border: "2px solid rgba(124,77,255,0.2)", borderRadius: 24, fontSize: 14, color: "#7C4DFF", marginBottom: 32, fontWeight: 700, fontFamily: "Nunito" }}>
-            <span>🎉</span> Free · Unlimited · No Credit Card · Pure Magic
-          </div>
+        <div className="kinetic-word" style={{ animationDelay: "0s", display: "inline-flex", alignItems: "center", gap: 10, padding: "10px 20px", background: "rgba(124,77,255,0.1)", border: "2px solid rgba(124,77,255,0.2)", borderRadius: 24, fontSize: 14, color: "#7C4DFF", marginBottom: 32, fontWeight: 700, fontFamily: "Nunito" }}>
+          <span>🎉</span> Free · Unlimited · No Credit Card · Pure Magic
+        </div>
 
-          <h1 style={{ fontSize: "clamp(48px, 7vw, 88px)", fontWeight: 800, lineHeight: 1.05, marginBottom: 28, letterSpacing: "-0.02em", color: "#2D1B69", fontFamily: "Fredoka One", overflow: "hidden" }}>
-            <KineticText text="Every Brand Has" delay={0.1} />
+        {/* HEADLINE — complete sentence */}
+        <div style={{ position: "relative", maxWidth: 860, zIndex: 5 }}>
+          <h1 style={{ fontSize: "clamp(44px, 7vw, 86px)", fontWeight: 800, lineHeight: 1.05, marginBottom: 28, letterSpacing: "-0.02em", color: "#2D1B69", fontFamily: "Fredoka One" }}>
+            <KineticText text="Every Brand Has a Story." delay={0.1} />
             <br />
             <span className="grad-text" style={{ fontFamily: "Fredoka One" }}>
-              <KineticText text="a Story. Let's Write Yours." delay={0.4} />
+              <KineticText text="Let's Write Yours." delay={0.45} />
             </span>
           </h1>
-
-          <p className="kinetic-word" style={{ animationDelay: "0.7s", fontSize: "clamp(16px, 2.5vw, 20px)", color: "#6B5B8A", lineHeight: 1.8, marginBottom: 48, maxWidth: 580, margin: "0 auto 48px", fontFamily: "Nunito", fontWeight: 500 }}>
+          <p className="kinetic-word" style={{ animationDelay: "0.7s", fontSize: "clamp(16px, 2.5vw, 20px)", color: "#6B5B8A", lineHeight: 1.8, maxWidth: 580, margin: "0 auto 48px", fontFamily: "Nunito", fontWeight: 500 }}>
             Your brand deserves more than templates. With AI-powered storytelling, create a brand identity as unique as you are — in minutes, not months. 🌟
           </p>
-
+          {/* CTA BUTTONS — both trigger magic burst, no "Explore Magic" scrolling */}
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="btn-primary" style={{ fontSize: 16, padding: "16px 40px", fontFamily: "Nunito", fontWeight: 700, animation: "kineticReveal 0.7s 0.9s both" }} onClick={() => onNav("signup")}>Begin the Journey ✨</button>
-            <button className="btn-ghost" style={{ fontSize: 16, padding: "16px 40px", fontFamily: "Nunito", fontWeight: 700, animation: "kineticReveal 0.7s 1.05s both" }} onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>Explore Magic →</button>
+            <button className="btn-primary" style={{ fontSize: 16, padding: "16px 40px", fontFamily: "Nunito", fontWeight: 700, animation: "kineticReveal 0.7s 0.9s both" }} onClick={() => magicNav("signup")}>Begin the Journey ✨</button>
+            <button className="btn-ghost" style={{ fontSize: 16, padding: "16px 40px", fontFamily: "Nunito", fontWeight: 700, animation: "kineticReveal 0.7s 1.05s both" }} onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>Explore Magic 🪄</button>
           </div>
         </div>
       </section>
 
-      {/* ── MARQUEE STRIP ── */}
+      {/* STATS BAR */}
+      <div style={{ padding: "0 48px 72px" }}>
+        <StatsBar />
+      </div>
+
+      {/* MARQUEE */}
       <div style={{ background: "rgba(124,77,255,0.04)", borderTop: "1px solid rgba(124,77,255,0.1)", borderBottom: "1px solid rgba(124,77,255,0.1)", padding: "4px 0" }}>
         <Marquee />
         <Marquee reverse />
@@ -287,59 +537,79 @@ export default function LandingPage({ onNav }) {
 
       <HanddrawnDivider />
 
-      {/* ── CHAPTER 1: Features Fan Carousel ── */}
+      {/* CHAPTER 1 — features */}
       <section id="features" style={{ scrollMarginTop: 80 }}>
+        <div className="reveal" style={{ textAlign: "center", padding: "72px 24px 40px" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#7C4DFF", fontFamily: "Nunito", marginBottom: 8, textTransform: "uppercase", letterSpacing: "1px" }}>📖 Chapter 1 · 13 Enchanted Tools</div>
+          <h2 style={{ fontSize: "clamp(34px,5vw,52px)", fontWeight: 800, color: "#2D1B69", fontFamily: "Fredoka One", marginBottom: 12 }}>Everything Your Brand Needs</h2>
+          <p style={{ color: "#6B5B8A", fontSize: 17, fontFamily: "Nunito", fontWeight: 500 }}>Powered by AI. Guided by your story.</p>
+        </div>
         <ToolsCarousel onNav={onNav} />
       </section>
 
       <HanddrawnDivider />
 
-      {/* ── CHAPTER 2: Sticky Scroll Story (How It Works) ── */}
+      <HighlightCards />
+
+      <HanddrawnDivider />
+
+      {/* CHAPTER 2 — how it works */}
       <section id="how-it-works" style={{ scrollMarginTop: 80 }}>
         <div className="reveal" style={{ textAlign: "center", padding: "72px 24px 40px" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#7C4DFF", fontFamily: "Nunito", marginBottom: 8, textTransform: "uppercase", letterSpacing: "1px" }}>📖 Chapter 2</div>
-          <h2 style={{ fontSize: 52, fontWeight: 800, color: "#2D1B69", fontFamily: "Fredoka One", marginBottom: 12 }}>The Storytelling Journey</h2>
-          <p style={{ color: "#6B5B8A", fontSize: 18, fontFamily: "Nunito", fontWeight: 500 }}>Scroll to walk through the magic.</p>
+          <h2 style={{ fontSize: "clamp(36px,5vw,52px)", fontWeight: 800, color: "#2D1B69", fontFamily: "Fredoka One", marginBottom: 12 }}>The Storytelling Journey</h2>
+          <p style={{ color: "#6B5B8A", fontSize: 18, fontFamily: "Nunito", fontWeight: 500 }}>Click through the magic.</p>
         </div>
         <StickyStory />
       </section>
 
       <HanddrawnDivider />
 
-      {/* ── FINALE: CTA ── */}
-      <section id="blog" style={{ padding: "100px 48px", textAlign: "center", background: "linear-gradient(135deg, rgba(124,77,255,0.08) 0%, rgba(255,107,157,0.08) 100%)", scrollMarginTop: 80, position: "relative", overflow: "hidden" }}>
-        {/* Mesh blobs */}
+      <Testimonials />
+
+      <HanddrawnDivider />
+
+      {/* FINALE CTA — no Log In button */}
+      <section style={{ padding: "100px 48px 120px", textAlign: "center", background: "linear-gradient(135deg, rgba(124,77,255,0.08) 0%, rgba(255,107,157,0.08) 100%)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: "-30%", left: "10%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(124,77,255,0.15) 0%, transparent 65%)", filter: "blur(60px)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: "-20%", right: "10%", width: 350, height: 350, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,107,157,0.12) 0%, transparent 65%)", filter: "blur(60px)", pointerEvents: "none" }} />
-
-        <div className="reveal" style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#7C4DFF", fontFamily: "Nunito", marginBottom: 16, textTransform: "uppercase", letterSpacing: "1px" }}>🎬 The Finale</div>
-          <h2 style={{ fontSize: "clamp(40px,5vw,64px)", fontWeight: 800, marginBottom: 16, color: "#2D1B69", fontFamily: "Fredoka One" }}>Your Story Awaits</h2>
-          <p className="reveal reveal-delay-1" style={{ color: "#6B5B8A", fontSize: 18, marginBottom: 48, fontFamily: "Nunito", maxWidth: 600, margin: "0 auto 48px", fontWeight: 500 }}>
+        <div className="reveal" style={{ position: "relative", zIndex: 1, maxWidth: 680, margin: "0 auto" }}>
+          <div style={{ fontSize: 56, marginBottom: 20, filter: "drop-shadow(0 8px 20px rgba(124,77,255,0.3))" }}>✨</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#7C4DFF", fontFamily: "Nunito", marginBottom: 16, textTransform: "uppercase", letterSpacing: "1.5px" }}>🎬 The Finale</div>
+          <h2 style={{ fontSize: "clamp(40px,5vw,64px)", fontWeight: 800, marginBottom: 16, color: "#2D1B69", fontFamily: "Fredoka One", lineHeight: 1.1 }}>Your Story Awaits</h2>
+          <p style={{ color: "#6B5B8A", fontSize: 18, fontFamily: "Nunito", maxWidth: 520, margin: "0 auto 48px", fontWeight: 500, lineHeight: 1.7 }}>
             Free forever. No tricks. No surprises. Just magnificent branding magic. ✨
           </p>
-          <button className="btn-primary reveal reveal-delay-2" style={{ fontSize: 18, padding: "18px 48px", fontFamily: "Nunito", fontWeight: 700 }} onClick={() => onNav("signup")}>
-            Begin Your Story →
-          </button>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 32 }}>
+            <button className="btn-primary" style={{ fontSize: 18, padding: "18px 48px", fontFamily: "Nunito", fontWeight: 700 }} onClick={() => magicNav("signup")}>Begin Your Story 🪄</button>
+          </div>
+          <div style={{ display: "flex", gap: 24, justifyContent: "center", flexWrap: "wrap" }}>
+            {["✅ Free forever", "🔒 No credit card", "⚡ Ready in 5 min", "🌍 11 languages"].map((s, i) => (
+              <span key={i} style={{ fontSize: 13, fontWeight: 700, color: "#9B8CB8", fontFamily: "Nunito" }}>{s}</span>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer style={{ borderTop: "2px solid rgba(124,77,255,0.1)", padding: "40px 48px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24, background: "rgba(255,250,243,0.5)" }}>
-        <div>
-          <div style={{ fontFamily: "Fredoka One", fontSize: 20, color: "#7C4DFF", marginBottom: 6 }}>📖 BrandCraft</div>
-          <div style={{ color: "#6B5B8A", fontSize: 14, fontFamily: "Nunito" }}>Where brand dreams come true. ✨</div>
+      {/* FOOTER — clean, no link columns, no avatar row */}
+      <footer style={{ borderTop: "2px solid rgba(124,77,255,0.1)", padding: "40px 48px", background: "rgba(255,250,243,0.5)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 24, maxWidth: 1100, margin: "0 auto", marginBottom: 24 }}>
+          <div>
+            <div style={{ fontFamily: "Fredoka One", fontSize: 22, color: "#7C4DFF", marginBottom: 6 }}>📖 BrandCraft</div>
+            <div style={{ color: "#6B5B8A", fontSize: 13, fontFamily: "Nunito", lineHeight: 1.5 }}>Where brand dreams come true. ✨</div>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            {["twitter","instagram","linkedin"].map(s => (
+              <div key={s} style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(124,77,255,0.08)", border: "1.5px solid rgba(124,77,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background="rgba(124,77,255,0.16)"; e.currentTarget.style.transform="translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="rgba(124,77,255,0.08)"; e.currentTarget.style.transform="translateY(0)"; }}
+              >
+                <Icon name={s} size={18} color="#7C4DFF" />
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 16, color: "#6B5B8A" }}>
-          {["twitter","instagram","linkedin"].map(s => (
-            <span key={s} className="hover-glow" style={{ cursor: "pointer", transition: "color 0.2s", fontSize: 18 }}
-              onMouseEnter={e => e.currentTarget.style.color = "#7C4DFF"}
-              onMouseLeave={e => e.currentTarget.style.color = "#6B5B8A"}>
-              <Icon name={s} size={20} />
-            </span>
-          ))}
-        </div>
-        <div style={{ width: "100%", textAlign: "center", color: "#A89BC0", fontSize: 13, marginTop: 8, fontFamily: "Nunito" }}>
+        <div style={{ borderTop: "1px solid rgba(124,77,255,0.08)", paddingTop: 20, textAlign: "center", color: "#A89BC0", fontSize: 13, fontFamily: "Nunito", maxWidth: 1100, margin: "0 auto" }}>
           © 2026 BrandCraft. Written with ✨ and 💜. All rights reserved.
         </div>
       </footer>

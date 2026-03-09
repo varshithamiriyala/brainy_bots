@@ -1,11 +1,211 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { callAIJSON } from "../utils/api";
 import { generateLogoImage } from "../utils/imageProviders";
 import { SkeletonCard, OutputActions, GenerateMorePanel, ToolSection } from "./UI";
 import Icon from "./Icon";
 
+// ─── Shared Page Shell ─────────────────────────────────────────────────────────
+function PageShell({ emoji, title, desc, tools, activeId, onSetActive, children }) {
+  return (
+    <div style={{ display: "flex", minHeight: "calc(100vh - 64px)", gap: 0 }}>
+      {/* Left sidebar nav */}
+      <aside style={{
+        width: 234, flexShrink: 0, borderRight: "1px solid var(--border)",
+        paddingBottom: 40, background: "var(--bg2)",
+      }}>
+        <div style={{ position: "sticky", top: 0, paddingTop: 32 }}>
+          <div style={{ padding: "0 20px 24px" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", marginBottom: 6, fontFamily: "Fredoka One" }}>{title}</h1>
+            <p style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.5 }}>{desc}</p>
+          </div>
+          <div style={{ padding: "0 10px" }}>
+            {tools.map(t => (
+              <div key={t.id} onClick={() => onSetActive(t.id)} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "11px 14px", borderRadius: 12, cursor: "pointer", marginBottom: 3,
+                background: activeId === t.id ? "var(--teal-glow)" : "transparent",
+                border: `1.5px solid ${activeId === t.id ? "var(--teal)" : "transparent"}`,
+                color: activeId === t.id ? "var(--teal)" : "var(--text2)",
+                fontWeight: activeId === t.id ? 700 : 500,
+                fontSize: 13, transition: "all 0.18s ease",
+              }}
+              onMouseEnter={e => { if (activeId !== t.id) { e.currentTarget.style.background = "var(--teal-glow)"; e.currentTarget.style.opacity = "0.7"; }}}
+              onMouseLeave={e => { if (activeId !== t.id) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.opacity = "1"; }}}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{t.emoji}</span>
+                <span>{t.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* Right content */}
+      <main style={{ flex: 1, minWidth: 0, padding: "32px 40px 80px", overflowY: "auto" }}>
+        {children}
+      </main>
+    </div>
+  );
+}
+
+// ─── Auto-Suggest Banner ───────────────────────────────────────────────────────
+function AutoSuggest({ suggestions }) {
+  const [dismissed, setDismissed] = useState([]);
+  const visible = suggestions.filter((_, i) => !dismissed.includes(i));
+  if (!visible.length) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+      {suggestions.map((s, i) => dismissed.includes(i) ? null : (
+        <div key={i} style={{
+          display: "flex", alignItems: "flex-start", gap: 12,
+          padding: "12px 16px", borderRadius: 12,
+          background: s.type === "warning" ? "rgba(255,179,0,0.08)" : "rgba(124,77,255,0.07)",
+          border: `1.5px solid ${s.type === "warning" ? "rgba(255,179,0,0.3)" : "rgba(124,77,255,0.2)"}`,
+        }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>{s.type === "warning" ? "⚠️" : "💡"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{s.title}</div>
+            <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5 }}>{s.body}</div>
+            {s.action && (
+              <button onClick={s.action.fn} style={{
+                marginTop: 8, padding: "5px 12px", borderRadius: 8, border: "none",
+                background: "var(--teal)", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer",
+              }}>{s.action.label}</button>
+            )}
+          </div>
+          <button onClick={() => setDismissed(d => [...d, i])} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 16, padding: 0, flexShrink: 0 }}>✕</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Logo Mockups ─────────────────────────────────────────────────────────────
+function LogoMockups({ logoUrl, brandName = "Your Brand" }) {
+  const [activeMock, setActiveMock] = useState("card");
+  const mocks = [
+    { id: "card", label: "Business Card", emoji: "💼" },
+    { id: "hoodie", label: "Hoodie", emoji: "👕" },
+    { id: "storefront", label: "Storefront", emoji: "🏪" },
+  ];
+
+  return (
+    <div style={{ marginTop: 24, padding: "20px 24px", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--teal)" }}>✨ Instant Mockups</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {mocks.map(m => (
+            <button key={m.id} onClick={() => setActiveMock(m.id)} style={{
+              padding: "5px 12px", borderRadius: 8, border: "1.5px solid",
+              borderColor: activeMock === m.id ? "var(--teal)" : "var(--border)",
+              background: activeMock === m.id ? "var(--teal-glow)" : "transparent",
+              color: activeMock === m.id ? "var(--teal)" : "var(--text2)",
+              fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
+            }}>{m.emoji} {m.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Business Card */}
+      {activeMock === "card" && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "20px 0" }}>
+          <div style={{
+            width: 340, height: 190, borderRadius: 14, background: "#fff",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.22), 0 4px 12px rgba(0,0,0,0.12)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: "linear-gradient(90deg, var(--teal), var(--purple))" }} />
+            <img src={logoUrl} alt="logo" style={{ width: 60, height: 60, objectFit: "contain", marginBottom: 8 }} />
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#1A1232", fontFamily: "Fredoka One" }}>{brandName}</div>
+            <div style={{ fontSize: 11, color: "#9B8CB8", marginTop: 4 }}>hello@{brandName.toLowerCase().replace(/\s/g,"")}.com</div>
+            <div style={{ position: "absolute", bottom: 0, right: 0, width: 60, height: 60, background: "var(--teal-glow)", borderRadius: "50%", transform: "translate(20px, 20px)" }} />
+          </div>
+        </div>
+      )}
+
+      {/* Hoodie */}
+      {activeMock === "hoodie" && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "20px 0" }}>
+          <div style={{ position: "relative", width: 220, height: 240 }}>
+            {/* Hoodie body */}
+            <svg viewBox="0 0 220 240" width="220" height="240">
+              <path d="M 60 30 L 20 70 L 10 140 L 40 145 L 40 220 L 180 220 L 180 145 L 210 140 L 200 70 L 160 30 Q 140 20 110 22 Q 80 20 60 30 Z" fill="#3D3560" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5"/>
+              {/* Hood */}
+              <path d="M 80 30 Q 110 5 140 30 Q 125 40 110 42 Q 95 40 80 30 Z" fill="#352E52" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
+              {/* Sleeve lines */}
+              <line x1="20" y1="70" x2="40" y2="145" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+              <line x1="200" y1="70" x2="180" y2="145" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+              {/* Pocket */}
+              <rect x="75" y="165" width="70" height="40" rx="6" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+            </svg>
+            {/* Logo on chest */}
+            <div style={{
+              position: "absolute", top: 75, left: "50%", transform: "translateX(-50%)",
+              display: "flex", flexDirection: "column", alignItems: "center",
+            }}>
+              <img src={logoUrl} alt="logo" style={{ width: 44, height: 44, objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.9 }} />
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", fontWeight: 700, marginTop: 2, letterSpacing: "1px", textTransform: "uppercase" }}>{brandName}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Storefront */}
+      {activeMock === "storefront" && (
+        <div style={{ display: "flex", justifyContent: "center", padding: "20px 0" }}>
+          <div style={{ position: "relative", width: 300, height: 210 }}>
+            {/* Building */}
+            <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 280, height: 185, background: "#E8E4F0", borderRadius: "10px 10px 0 0", border: "2px solid #C8C0D8" }}>
+              {/* Sign board */}
+              <div style={{
+                position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)",
+                width: 220, padding: "12px 20px", background: "#fff",
+                borderRadius: 10, border: "3px solid var(--teal)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                display: "flex", alignItems: "center", gap: 10, justifyContent: "center",
+              }}>
+                <img src={logoUrl} alt="logo" style={{ width: 32, height: 32, objectFit: "contain" }} />
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#1A1232", fontFamily: "Fredoka One" }}>{brandName}</span>
+              </div>
+              {/* Door */}
+              <div style={{ position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)", width: 60, height: 90, background: "#7C6B9E", borderRadius: "6px 6px 0 0", border: "2px solid #6B5B8A" }}>
+                <div style={{ position: "absolute", top: 12, right: 8, width: 8, height: 8, borderRadius: "50%", background: "rgba(255,215,0,0.9)" }} />
+              </div>
+              {/* Windows */}
+              {[40, 160].map(x => (
+                <div key={x} style={{ position: "absolute", bottom: 60, left: x, width: 50, height: 50, background: "rgba(135,206,250,0.6)", borderRadius: 4, border: "2px solid #9B8CB8" }}>
+                  <div style={{ position: "absolute", top: 0, left: "50%", width: 1, height: "100%", background: "rgba(0,0,0,0.15)" }} />
+                  <div style={{ position: "absolute", top: "50%", left: 0, height: 1, width: "100%", background: "rgba(0,0,0,0.15)" }} />
+                </div>
+              ))}
+            </div>
+            {/* Ground */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 8, background: "#9B8CB8", borderRadius: "0 0 4px 4px" }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Contrast checker ─────────────────────────────────────────────────────────
+function hexLum(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const toLinear = c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+function contrastRatio(hex1, hex2) {
+  const l1 = hexLum(hex1), l2 = hexLum(hex2);
+  const light = Math.max(l1, l2), dark = Math.min(l1, l2);
+  return (light + 0.05) / (dark + 0.05);
+}
+
 // ─── Brand Names ───────────────────────────────────────────────────────────────
-export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
+function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +226,11 @@ export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, 
   };
 
   return (
-    <ToolSection title="Brand Name Generator" desc="AI-powered names tailored to your brand profile.">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>✨ Brand Name Generator</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>AI-powered names tailored to your brand profile.</p>
+      </div>
       {rounds.length === 0 && !loading && (
         <button className="btn-primary" onClick={() => generate()}>Generate Names</button>
       )}
@@ -35,13 +239,13 @@ export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, 
       {rounds.map((round, ri) => (
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}{round.spec ? ` · ${round.spec}` : ""}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
             {round.names.map((n, i) => {
               const id = `names-${ri}-${i}`;
               return (
-                <div key={i} className="card output-card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ fontFamily: "Syne", fontSize: 20, fontWeight: 800, color: "var(--teal)", marginBottom: 8 }}>{n.name}</div>
+                <div key={i} className="card output-card" style={{ padding: "16px 18px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                    <div style={{ fontFamily: "Fredoka One", fontSize: 20, color: "var(--teal)" }}>{n.name}</div>
                     <OutputActions text={n.name} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Brand Names"] === id} feature="Brand Names" id={id} />
                   </div>
                   <p style={{ color: "var(--text2)", fontSize: 13, lineHeight: 1.6 }}>{n.reason}</p>
@@ -55,18 +259,38 @@ export function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, 
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["More Playful","More Professional","Shorter Names","Unique/Invented","More Descriptive","International Feel"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Color Palette ─────────────────────────────────────────────────────────────
-export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
+function ColorPaletteTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [copiedHex, setCopiedHex] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+
+  const checkContrastSuggestions = (palette) => {
+    const issues = [];
+    palette.forEach(c => {
+      if (!c.hex || !c.hex.startsWith("#") || c.hex.length < 7) return;
+      const whiteContrast = contrastRatio(c.hex, "#ffffff");
+      const darkContrast = contrastRatio(c.hex, "#1A1232");
+      if (c.role === "Primary" || c.role === "Accent") {
+        if (whiteContrast < 3 && darkContrast < 3) {
+          issues.push({
+            type: "warning",
+            title: `Low contrast on ${c.name} (${c.hex})`,
+            body: `This ${c.role} color has poor contrast against both light and dark text (ratio: ${whiteContrast.toFixed(1)}:1 vs white). Consider adjusting brightness for accessibility.`,
+          });
+        }
+      }
+    });
+    setSuggestions(issues);
+  };
 
   const generate = async (spec = "") => {
-    setLoading(true);
+    setLoading(true); setSuggestions([]);
     try {
       const result = await callAIJSON(
         "You are a brand color expert. Return JSON with a 'palette' array of exactly 5 objects, each with 'hex' (e.g. #FF5733), 'name' (string), 'role' (Primary/Secondary/Accent/Neutral/Background).",
@@ -75,6 +299,7 @@ export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite
       if (result.palette) {
         setRounds(r => [...r, { palette: result.palette, spec, round: r.length + 1 }]);
         onOutput("Color Palette", result.palette.map(c => c.hex).join(", "));
+        checkContrastSuggestions(result.palette);
       }
     } catch {}
     setLoading(false);
@@ -87,27 +312,32 @@ export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite
   };
 
   return (
-    <ToolSection title="Color Palette Generator" desc="Perfect colors that match your brand vibe.">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>🎨 Color Palette Generator</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>Perfect colors that match your brand vibe, with accessibility checks.</p>
+      </div>
+      <AutoSuggest suggestions={suggestions} />
       {rounds.length === 0 && !loading && <button className="btn-primary" onClick={() => generate()}>Generate Palette</button>}
       {loading && <div style={{ display: "flex", gap: 12 }}>{[...Array(5)].map((_, i) => <div key={i} className="skeleton" style={{ height: 120, flex: 1, borderRadius: 12 }} />)}</div>}
       {rounds.map((round, ri) => (
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}</div>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
             <OutputActions text={`Color Palette: ${round.palette.map(c => `${c.name} (${c.hex}) - ${c.role}`).join(', ')}`} onSelect={onSelect} selected={selectedOutputs["Color Palette"] === `palette-${ri}`} feature="Color Palette" id={`palette-${ri}`} />
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {round.palette.map((c, i) => (
               <div key={i} style={{ flex: "1 1 100px", minWidth: 90 }}>
                 <div onClick={() => copyHex(c.hex)}
-                  style={{ height: 100, borderRadius: 12, background: c.hex, cursor: "pointer", transition: "transform 0.2s", display: "flex", alignItems: "flex-end", padding: 8, position: "relative" }}
-                  onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
+                  style={{ height: 110, borderRadius: 14, background: c.hex, cursor: "pointer", transition: "transform 0.2s", display: "flex", alignItems: "flex-end", padding: 8, position: "relative", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05) translateY(-2px)"}
                   onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-                  {copiedHex === c.hex && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", borderRadius: 12, color: "#fff", fontSize: 12, fontWeight: 600 }}>Copied!</div>}
+                  {copiedHex === c.hex && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", borderRadius: 14, color: "#fff", fontSize: 12, fontWeight: 600 }}>Copied!</div>}
                 </div>
-                <div style={{ marginTop: 6 }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{c.hex}</div>
-                  <div style={{ fontSize: 11, color: "var(--text2)" }}>{c.name}</div>
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{c.hex}</div>
+                  <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 1 }}>{c.name}</div>
                   <div style={{ fontSize: 10, color: "var(--text3)" }}>{c.role}</div>
                 </div>
               </div>
@@ -119,17 +349,43 @@ export function ColorPaletteTool({ brandProfile, onOutput, favorites, onFavorite
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["Darker","Lighter","More Vibrant","More Muted","Warmer","Cooler","More Contrast","Pastel"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Font Pairing ──────────────────────────────────────────────────────────────
-export function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
+function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+
+  const checkFontSuggestions = (pairs) => {
+    const issues = [];
+    pairs.forEach(pair => {
+      // Heuristic: decorative/display fonts as body text = low readability
+      const badBodyFonts = ["Playfair Display", "Cinzel", "Bebas Neue", "Pacifico", "Lobster", "Dancing Script"];
+      if (badBodyFonts.some(f => pair.body?.includes(f))) {
+        issues.push({
+          type: "warning",
+          title: `${pair.body} may be hard to read as body text`,
+          body: `Decorative fonts reduce readability at small sizes. Try pairing it with a neutral sans-serif like "Inter", "Lato", or "Source Sans 3" for body text instead.`,
+          action: { label: "Generate with Inter body", fn: () => generate("Use Inter or Lato as the body font") },
+        });
+      }
+      // Check if heading and body are too similar
+      if (pair.heading === pair.body) {
+        issues.push({ type: "warning", title: "Heading and body fonts are the same", body: "Using the same font for headings and body creates low visual hierarchy. Try a contrasting pair." });
+      }
+    });
+    // Generic readability tip if no specific issues
+    if (issues.length === 0 && pairs.length > 0) {
+      issues.push({ type: "tip", title: "💡 Pro tip: Test at different sizes", body: "Check your heading font at 14px and body font at 48px to ensure both remain readable at non-standard sizes." });
+    }
+    setSuggestions(issues);
+  };
 
   const generate = async (spec = "") => {
-    setLoading(true);
+    setLoading(true); setSuggestions([]);
     try {
       const result = await callAIJSON(
         "You are a typography expert. Return JSON: {pairs: [{heading: string, body: string, reason: string, css: string}]} with 3 Google Font pairs.",
@@ -138,13 +394,19 @@ export function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSel
       if (result.pairs) {
         setRounds(r => [...r, { pairs: result.pairs, spec, round: r.length + 1 }]);
         onOutput("Font Pairing", result.pairs[0]?.heading + " + " + result.pairs[0]?.body);
+        checkFontSuggestions(result.pairs);
       }
     } catch {}
     setLoading(false);
   };
 
   return (
-    <ToolSection title="Typography Pairing" desc="Font combinations that look professionally made.">
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>🖋️ Typography Pairing</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>Font combinations with readability & contrast checks.</p>
+      </div>
+      <AutoSuggest suggestions={suggestions} />
       {rounds.length === 0 && !loading && <button className="btn-primary" onClick={() => generate()}>Generate Font Pairs</button>}
       {loading && <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{[...Array(3)].map((_, i) => <SkeletonCard key={i} lines={4} />)}</div>}
       {rounds.map((round, ri) => (
@@ -152,22 +414,21 @@ export function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSel
           <div className="round-label">Round {round.round}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {round.pairs.map((pair, i) => (
-              <div key={i} className="card">
+              <div key={i} className="card" style={{ padding: "20px 22px" }}>
                 <link href={`https://fonts.googleapis.com/css2?family=${pair.heading?.replace(/ /g,"+")}:wght@700&family=${pair.body?.replace(/ /g,"+")}:wght@400;500&display=swap`} rel="stylesheet" />
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div></div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                   <OutputActions text={`Font Pairing: ${pair.heading} + ${pair.body} - ${pair.reason}`} onSelect={onSelect} selected={selectedOutputs["Font Pairing"] === `font-${ri}-${i}`} feature="Font Pairing" id={`font-${ri}-${i}`} />
                 </div>
-                <div style={{ fontFamily: `'${pair.heading}', serif`, fontSize: 32, fontWeight: 700, marginBottom: 8 }}>The quick brown fox</div>
-                <div style={{ fontFamily: `'${pair.body}', sans-serif`, fontSize: 15, color: "var(--text2)", lineHeight: 1.7, marginBottom: 12 }}>
-                  Your brand story deserves typography that communicates trust and identity.
+                <div style={{ fontFamily: `'${pair.heading}', serif`, fontSize: 30, fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>The quick brown fox</div>
+                <div style={{ fontFamily: `'${pair.body}', sans-serif`, fontSize: 15, color: "var(--text2)", lineHeight: 1.7, marginBottom: 14 }}>
+                  Your brand story deserves typography that communicates trust and identity at every touchpoint.
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
                   <div>
-                    <span style={{ fontSize: 12, color: "var(--teal)", fontWeight: 600 }}>{pair.heading}</span>
+                    <span style={{ fontSize: 12, color: "var(--teal)", fontWeight: 700 }}>{pair.heading}</span>
                     <span style={{ fontSize: 12, color: "var(--text3)", margin: "0 6px" }}>+</span>
                     <span style={{ fontSize: 12, color: "var(--text2)" }}>{pair.body}</span>
-                    {pair.reason && <span style={{ fontSize: 11, color: "var(--text3)", display: "block", marginTop: 4 }}>{pair.reason}</span>}
+                    {pair.reason && <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{pair.reason}</div>}
                   </div>
                   <button className="btn-ghost btn-sm" onClick={() => navigator.clipboard.writeText(pair.css || `font-family: '${pair.heading}', serif;`)}>
                     <Icon name="copy" size={12} /> Copy CSS
@@ -182,12 +443,12 @@ export function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSel
         <GenerateMorePanel loading={loading} onGenerate={generate}
           chips={["More Modern","More Classic","More Playful","More Elegant","Bolder Heading","Lighter Body"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Logo Creator ──────────────────────────────────────────────────────────────
-export function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
+function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
   const [rounds, setRounds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingIdx, setLoadingIdx] = useState(-1);
@@ -196,6 +457,7 @@ export function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSel
   const [colorPref, setColorPref] = useState("");
   const [avoid, setAvoid] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
+  const [previewLogo, setPreviewLogo] = useState(null);
 
   const buildPrompts = (spec = "") => {
     const industry = brandProfile?.industry || "business";
@@ -213,15 +475,17 @@ export function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSel
   };
 
   const generate = async (spec = "") => {
-    setLoading(true); setError(""); setStatusMsg("");
+    setLoading(true); setError(""); setStatusMsg(""); setPreviewLogo(null);
     const prompts = buildPrompts(spec);
     const logos = [];
     try {
       for (let i = 0; i < prompts.length; i++) {
         setLoadingIdx(i);
-        setStatusMsg(`Generating ${prompts[i].style}...`);
+        setStatusMsg(`Generating ${prompts[i].style}…`);
         const imageUrl = await generateLogoImage(prompts[i].prompt, (msg) => setStatusMsg(`[${i+1}/4] ${prompts[i].style}: ${msg}`));
         logos.push({ style: prompts[i].style, imageUrl, prompt: prompts[i].prompt });
+        // Immediately show first logo as preview
+        if (i === 0) setPreviewLogo({ url: imageUrl, brandName: brandProfile?.name || brandProfile?.industry || "Brand" });
         setStatusMsg(`✓ ${prompts[i].style} done`);
       }
       setRounds(r => [...r, { logos, spec, round: r.length + 1 }]);
@@ -245,40 +509,43 @@ export function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSel
   const styleLabels = ["Minimal Icon", "Wordmark", "Badge / Emblem", "Abstract Mark"];
 
   return (
-    <ToolSection title="Logo Creator" desc="Real AI-generated logo images powered by Stable Diffusion XL.">
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20, maxWidth: 560 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <label style={{ fontSize: 12, color: "var(--text2)", display: "block", marginBottom: 6 }}>Style notes</label>
-            <input className="input-base" placeholder="e.g. use geometric shapes" value={styleNotes} onChange={e => setStyleNotes(e.target.value)} />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: "var(--text2)", display: "block", marginBottom: 6 }}>Color preference</label>
-            <input className="input-base" placeholder="e.g. navy blue and gold" value={colorPref} onChange={e => setColorPref(e.target.value)} />
-          </div>
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>🎯 Logo Creator</h2>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>Real AI-generated logos with instant mockup previews.</p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, maxWidth: 520 }}>
+        <div>
+          <label style={{ fontSize: 12, color: "var(--text2)", display: "block", marginBottom: 6 }}>Style notes</label>
+          <input className="input-base" placeholder="e.g. use geometric shapes" value={styleNotes} onChange={e => setStyleNotes(e.target.value)} />
         </div>
         <div>
-          <label style={{ fontSize: 12, color: "var(--text2)", display: "block", marginBottom: 6 }}>Avoid</label>
-          <input className="input-base" placeholder="e.g. no circles, no dark backgrounds" value={avoid} onChange={e => setAvoid(e.target.value)} />
+          <label style={{ fontSize: 12, color: "var(--text2)", display: "block", marginBottom: 6 }}>Color preference</label>
+          <input className="input-base" placeholder="e.g. navy blue and gold" value={colorPref} onChange={e => setColorPref(e.target.value)} />
         </div>
-        <button className="btn-primary" onClick={() => generate()} disabled={loading} style={{ alignSelf: "flex-start" }}>
-          {loading ? `Generating… (${Math.max(loadingIdx, 0) + 1}/4)` : "Generate Logos"}
-        </button>
       </div>
+      <div style={{ marginBottom: 16, maxWidth: 520 }}>
+        <label style={{ fontSize: 12, color: "var(--text2)", display: "block", marginBottom: 6 }}>Avoid</label>
+        <input className="input-base" placeholder="e.g. no circles, no dark backgrounds" value={avoid} onChange={e => setAvoid(e.target.value)} />
+      </div>
+      <button className="btn-primary" onClick={() => generate()} disabled={loading} style={{ marginBottom: 24 }}>
+        {loading ? `Generating… (${Math.max(loadingIdx, 0) + 1}/4)` : "Generate Logos"}
+      </button>
 
       {loading && (
         <div style={{ marginBottom: 20 }}>
           {statusMsg && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "rgba(78,205,196,0.07)", border: "1px solid rgba(78,205,196,0.2)", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "var(--teal)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "var(--teal-glow)", border: "1px solid var(--teal)", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "var(--teal)" }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--teal)", animation: "pulse-glow 1s infinite" }} />
               {statusMsg}
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {styleLabels.map((label, i) => (
-              <div key={i} style={{ borderRadius: 14, border: `1px solid ${i === loadingIdx ? "rgba(78,205,196,0.4)" : "var(--border)"}`, background: "var(--card)", overflow: "hidden" }}>
-                <div className="skeleton" style={{ height: 200, borderRadius: 0, opacity: i === loadingIdx ? 1 : i < loadingIdx ? 0.2 : 0.4 }} />
-                <div style={{ padding: "10px 14px", fontSize: 12, color: i < loadingIdx ? "#4ECDC4" : i === loadingIdx ? "var(--teal)" : "var(--text3)", fontWeight: i <= loadingIdx ? 600 : 400 }}>
+              <div key={i} style={{ borderRadius: 14, border: `1px solid ${i === loadingIdx ? "var(--teal)" : "var(--border)"}`, background: "var(--card)", overflow: "hidden" }}>
+                <div className="skeleton" style={{ height: 180, borderRadius: 0, opacity: i === loadingIdx ? 1 : i < loadingIdx ? 0.2 : 0.4 }} />
+                <div style={{ padding: "10px 14px", fontSize: 12, color: i < loadingIdx ? "var(--teal)" : i === loadingIdx ? "var(--teal)" : "var(--text3)", fontWeight: i <= loadingIdx ? 600 : 400 }}>
                   {i < loadingIdx ? `✓ ${label}` : i === loadingIdx ? `⟳ ${label}` : label}
                 </div>
               </div>
@@ -288,63 +555,76 @@ export function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSel
       )}
 
       {error && (
-        <div style={{ padding: "16px 18px", background: "rgba(255,107,107,0.06)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 12, marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-            <span style={{ color: "#FF6B6B", fontWeight: 600, fontSize: 14 }}>⚠ Image generation failed</span>
-            <button className="btn-ghost btn-sm" onClick={() => generate()}>Retry</button>
-          </div>
-          <pre style={{ color: "rgba(255,107,107,0.8)", fontSize: 11, whiteSpace: "pre-wrap", lineHeight: 1.6, margin: 0, fontFamily: "monospace" }}>{error}</pre>
+        <div style={{ padding: "14px 16px", background: "rgba(255,107,107,0.06)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 12, marginBottom: 16 }}>
+          <span style={{ color: "#FF6B6B", fontWeight: 600, fontSize: 14 }}>⚠ Generation failed — </span>
+          <button className="btn-ghost btn-sm" onClick={() => generate()}>Retry</button>
+          <div style={{ fontSize: 11, color: "rgba(255,107,107,0.7)", marginTop: 6, fontFamily: "monospace" }}>{error}</div>
         </div>
       )}
 
       {rounds.map((round, ri) => (
-        <div key={ri} style={{ marginBottom: 28 }}>
+        <div key={ri} style={{ marginBottom: 32 }}>
           <div className="round-label">Round {round.round}{round.spec ? ` · ${round.spec}` : ""}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {round.logos.map((logo, i) => (
-              <div key={i} className="card" style={{ padding: 0, overflow: "hidden" }}>
-                <div style={{ background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 220 }}>
-                  <img src={logo.imageUrl} alt={logo.style} style={{ width: "100%", height: 220, objectFit: "contain", display: "block" }} />
+              <div key={i} className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer" }}
+                onClick={() => setPreviewLogo({ url: logo.imageUrl, brandName: brandProfile?.name || brandProfile?.industry || "Brand" })}>
+                <div style={{ background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 180, position: "relative" }}>
+                  <img src={logo.imageUrl} alt={logo.style} style={{ width: "100%", height: 180, objectFit: "contain", display: "block" }} />
+                  <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 8px", background: "rgba(0,0,0,0.6)", borderRadius: 6, fontSize: 10, color: "#fff", fontWeight: 700 }}>Click to preview</div>
                 </div>
                 <div style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{logo.style}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{logo.style}</div>
                     <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>512 × 512 · PNG</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <OutputActions text={`Logo: ${logo.style} - ${logo.prompt}`} onSelect={onSelect} selected={selectedOutputs["Logo Creator"] === `logo-${ri}-${i}`} feature="Logo Creator" id={`logo-${ri}-${i}`} />
-                    <button className="action-btn" title="Download PNG" onClick={() => downloadImage(logo.imageUrl, logo.style)}>
+                    <OutputActions text={`Logo: ${logo.style}`} onSelect={onSelect} selected={selectedOutputs["Logo Creator"] === `logo-${ri}-${i}`} feature="Logo Creator" id={`logo-${ri}-${i}`} />
+                    <button className="action-btn" title="Download PNG" onClick={e => { e.stopPropagation(); downloadImage(logo.imageUrl, logo.style); }}>
                       <Icon name="download" size={13} />
-                    </button>
-                    <button className="action-btn" title="Copy prompt" onClick={() => navigator.clipboard.writeText(logo.prompt)}>
-                      <Icon name="copy" size={13} />
                     </button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Live mockup preview — updates immediately when logo is selected */}
+          {previewLogo && (
+            <LogoMockups logoUrl={previewLogo.url} brandName={previewLogo.brandName} />
+          )}
         </div>
       ))}
 
       {rounds.length > 0 && (
         <GenerateMorePanel loading={loading} onGenerate={generate}
-          chips={["More Minimal","More Bold","Different Colors","More Premium","More Playful","More Modern","More Classic","Darker Theme","Lighter Theme"]} />
+          chips={["More Minimal","More Bold","Different Colors","More Premium","More Playful","More Modern","Darker Theme","Lighter Theme"]} />
       )}
-    </ToolSection>
+    </div>
   );
 }
 
 // ─── Brand Identity Page ───────────────────────────────────────────────────────
 export function BrandIdentityPage({ brandProfile, onOutput, favorites, onFavorite, selectedOutputs, onSelect }) {
+  const [activeTool, setActiveTool] = useState("names");
+
+  const tools = [
+    { id: "names",  emoji: "✨", label: "Brand Names" },
+    { id: "logo",   emoji: "🎯", label: "Logo Creator" },
+    { id: "colors", emoji: "🎨", label: "Color Palette" },
+    { id: "fonts",  emoji: "🖋️", label: "Typography" },
+  ];
+
   return (
-    <div style={{ maxWidth: 900 }}>
-      <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Brand Identity</h1>
-      <p style={{ color: "var(--text2)", marginBottom: 40 }}>Build the visual and verbal foundation of your brand.</p>
-      <BrandNamesTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-      <LogoCreatorTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-      <ColorPaletteTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-      <FontPairingTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />
-    </div>
+    <PageShell
+      emoji="🎨" title="Brand Identity"
+      desc="Build the visual and verbal foundation of your brand."
+      tools={tools} activeId={activeTool} onSetActive={setActiveTool}
+    >
+      {activeTool === "names"  && <BrandNamesTool brandProfile={brandProfile} onOutput={onOutput} favorites={favorites} onFavorite={onFavorite} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+      {activeTool === "logo"   && <LogoCreatorTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+      {activeTool === "colors" && <ColorPaletteTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+      {activeTool === "fonts"  && <FontPairingTool brandProfile={brandProfile} onOutput={onOutput} selectedOutputs={selectedOutputs} onSelect={onSelect} />}
+    </PageShell>
   );
 }

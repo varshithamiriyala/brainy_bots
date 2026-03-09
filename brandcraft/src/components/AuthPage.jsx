@@ -290,7 +290,7 @@ export function AuthPage({ type = "login", onAuth, onNav }) {
 
         {/* Heading */}
         <div style={{ fontFamily:"'DM Serif Display',Georgia,serif", fontSize:"1.6rem", color:"#0f0f14", marginBottom:4, lineHeight:1.2 }}>
-          {isSignup ? "Join the tribe ✨" : "Welcome back 👋"}
+          {isSignup ? "Create your brand ✨" : "Welcome back 👋"}
         </div>
         <div style={{ fontSize:"0.82rem", color:"#6b7280", marginBottom:22 }}>
           {isSignup ? "Create your account and find your people." : "Log in to reconnect with your tribe."}
