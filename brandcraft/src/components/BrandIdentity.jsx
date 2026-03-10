@@ -439,7 +439,7 @@ function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
       for (let i = 0; i < prompts.length; i++) {
         setLoadingIdx(i);
         setStatusMsg(`Generating ${prompts[i].style}…`);
-        const imageUrl = await generateLogoImage(prompts[i].prompt, (msg) => setStatusMsg(`[${i+1}/4] ${prompts[i].style}: ${msg}`));
+        const imageUrl = await generateLogoImage(prompts[i].prompt, (msg) => setStatusMsg(`[${i+1}/4] ${prompts[i].style}: ${msg}`), prompts[i].style);
         logos.push({ style: prompts[i].style, imageUrl, prompt: prompts[i].prompt });
         // Immediately show first logo as preview
         if (i === 0) setPreviewLogo({ url: imageUrl, brandName: brandProfile?.name || brandProfile?.industry || "Brand" });

@@ -1,17 +1,18 @@
 const express = require("express");
 const cors    = require("cors");
 const fetch   = require("node-fetch");
+const FormData = require("form-data");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
-const GROQ_KEY      = process.env.GROQ_API_KEY;       // existing
-const GEMINI_KEY    = process.env.GEMINI_API_KEY;     // get free key at aistudio.google.com
-const STABILITY_KEY = process.env.STABILITY_API_KEY;  // get at platform.stability.ai
+const GROQ_KEY      = process.env.GROQ_API_KEY;
+const GEMINI_KEY    = process.env.GEMINI_API_KEY;
+const STABILITY_KEY = process.env.STABILITY_API_KEY;
 
-// ── Groq chat proxy (unchanged) ──────────────────────────────────────────────
+// ── Groq chat proxy ──────────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
   try {
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -30,7 +31,8 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ── Gemini 2.0 Flash image generation ───────────────────────────────────────
+// ── Gemini Imagen 3 image generation ────────────────────────────────────────
+// Uses imagen-3.0-generate-002 which is the current production image model
 // POST /api/gemini-image  { prompt: string }
 // Returns { imageBase64: string, mimeType: string }
 app.post("/api/gemini-image", async (req, res) => {
@@ -39,6 +41,36 @@ app.post("/api/gemini-image", async (req, res) => {
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
 
   try {
+    // Try Imagen 3 first (best quality, specifically designed for image generation)
+    const imagenRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_KEY}`,
+      {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: "1:1",
+            safetyFilterLevel: "block_only_high",
+            personGeneration: "allow_adult",
+          },
+        }),
+      }
+    );
+
+    const imagenData = await imagenRes.json();
+
+    if (imagenRes.ok && imagenData?.predictions?.[0]?.bytesBase64Encoded) {
+      return res.json({
+        imageBase64: imagenData.predictions[0].bytesBase64Encoded,
+        mimeType:    imagenData.predictions[0].mimeType ?? "image/png",
+      });
+    }
+
+    // Fallback to gemini-2.0-flash with image generation modality
+    console.warn("Imagen 3 failed, trying gemini-2.0-flash-preview-image-generation:", JSON.stringify(imagenData).slice(0, 200));
+
     const gemRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_KEY}`,
       {
@@ -51,20 +83,21 @@ app.post("/api/gemini-image", async (req, res) => {
       }
     );
 
-    const data = await gemRes.json();
+    const gemData = await gemRes.json();
     if (!gemRes.ok) {
-      return res.status(gemRes.status).json({ error: data?.error?.message || "Gemini API error" });
+      return res.status(gemRes.status).json({ error: gemData?.error?.message || "Gemini API error" });
     }
 
-    // Navigate candidates → content → parts to find the image
-    const parts   = data?.candidates?.[0]?.content?.parts ?? [];
+    const parts   = gemData?.candidates?.[0]?.content?.parts ?? [];
     const imgPart = parts.find(p => p.inlineData?.data);
     if (!imgPart) {
-      const txt = parts.find(p => p.text)?.text ?? null;
-      return res.status(502).json({ error: "Gemini returned no image", modelText: txt });
+      return res.status(502).json({
+        error: "Gemini returned no image — check your API key has image generation enabled",
+        modelText: parts.find(p => p.text)?.text ?? null,
+      });
     }
 
-    res.json({
+    return res.json({
       imageBase64: imgPart.inlineData.data,
       mimeType:    imgPart.inlineData.mimeType ?? "image/png",
     });
@@ -73,51 +106,54 @@ app.post("/api/gemini-image", async (req, res) => {
   }
 });
 
-// ── Stability AI SDXL image generation ──────────────────────────────────────
-// POST /api/stability-image  { prompt, negative_prompt, width, height, steps, cfg_scale }
+// ── Stability AI v2beta Core image generation ────────────────────────────────
+// Uses the newer stable-image/generate/core endpoint (not deprecated v1 SDXL)
+// POST /api/stability-image  { prompt, negative_prompt }
 // Returns { imageBase64: string }
 app.post("/api/stability-image", async (req, res) => {
   if (!STABILITY_KEY) return res.status(500).json({ error: "STABILITY_API_KEY not set in .env" });
-  const { prompt, negative_prompt, width = 1024, height = 1024, steps = 30, cfg_scale = 8 } = req.body;
+  const { prompt, negative_prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
 
   try {
+    // Use multipart/form-data as required by v2beta
+    const form = new FormData();
+    form.append("prompt", prompt);
+    form.append("output_format", "png");
+    form.append("aspect_ratio", "1:1");
+    if (negative_prompt) form.append("negative_prompt", negative_prompt);
+
     const stabRes = await fetch(
-      "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image",
+      "https://api.stability.ai/v2beta/stable-image/generate/core",
       {
         method:  "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Accept":        "application/json",
+          ...form.getHeaders(),
           "Authorization": `Bearer ${STABILITY_KEY}`,
+          "Accept":        "image/*",
         },
-        body: JSON.stringify({
-          text_prompts: [
-            { text: prompt,          weight:  1 },
-            { text: negative_prompt || "blurry, low quality, watermark, distorted", weight: -1 },
-          ],
-          cfg_scale,
-          width,
-          height,
-          samples: 1,
-          steps,
-        }),
+        body: form,
       }
     );
 
-    const data = await stabRes.json();
     if (!stabRes.ok) {
-      return res.status(stabRes.status).json({ error: data?.message || "Stability API error" });
+      const errText = await stabRes.text();
+      return res.status(stabRes.status).json({ error: `Stability v2beta error: ${errText.slice(0, 200)}` });
     }
 
-    const b64 = data?.artifacts?.[0]?.base64;
-    if (!b64) return res.status(502).json({ error: "Stability returned no image" });
+    // v2beta returns raw image bytes, convert to base64
+    const imgBuffer = await stabRes.buffer();
+    const b64 = imgBuffer.toString("base64");
+    return res.json({ imageBase64: b64 });
 
-    res.json({ imageBase64: b64 });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
 const PORT = 3001;
-app.listen(PORT, () => console.log(`✅ BrandCraft proxy running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`✅ BrandCraft proxy running on http://localhost:${PORT}`);
+  console.log(`   Gemini key:    ${GEMINI_KEY    ? "✓ set" : "✗ missing — add GEMINI_API_KEY to .env"}`);
+  console.log(`   Stability key: ${STABILITY_KEY ? "✓ set" : "✗ missing — add STABILITY_API_KEY to .env"}`);
+});
