@@ -23,7 +23,7 @@ export function OutputActions({ text, onStar, starred, onSave, onSelect, selecte
         {starred ? <Icon name="star" size={13} /> : <Icon name="starO" size={13} />}
       </button>
       {onSelect && (
-        <button className={`action-btn ${selected ? "selected" : ""}`} onClick={() => { onSelect(feature, id); show("✓ Selected as final!"); }} title="Select as Final">
+        <button className={`action-btn ${selected ? "selected" : ""}`} onClick={() => { onSelect(feature, id, text); show("✓ Selected as final!"); }} title="Select as Final">
           <Icon name="check" size={13} />
         </button>
       )}

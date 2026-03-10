@@ -262,9 +262,9 @@ export default function App() {
     showToast("⭐ Added to favourites!");
   };
 
-  const handleSelect = (feature, outputId) => {
+  const handleSelect = (feature, outputId, outputText) => {
     const wasAllSelected = requiredOutputs.every(key => selectedOutputs[key]);
-    setSelectedOutputs(s => ({ ...s, [feature]: outputId }));
+    setSelectedOutputs(s => ({ ...s, [feature]: { id: outputId, text: outputText } }));
     setConfettiType("default");
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 3000);

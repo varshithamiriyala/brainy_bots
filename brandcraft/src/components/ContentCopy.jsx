@@ -55,7 +55,7 @@ function AdCopyTool({ brandProfile, onOutput, favorites, onFavorite, selectedOut
                 <div key={i} className="card output-card" style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: "var(--teal)", fontWeight: 700 }}>Variation {i + 1}</div>
-                    <OutputActions text={`${ad.headline}\n${ad.body}\n${ad.cta}`} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Ad Copy"] === id} feature="Ad Copy" id={id} />
+                    <OutputActions text={`${ad.headline}\n${ad.body}\n${ad.cta}`} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Ad Copy"]?.id === id} feature="Ad Copy" id={id} />
                   </div>
                   <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 8, color: "var(--text)" }}>{ad.headline}</div>
                   <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, marginBottom: 12 }}>{ad.body}</p>
@@ -122,7 +122,7 @@ function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, selected
                     <span style={{ fontSize: 11, color: "var(--teal)", fontWeight: 700 }}>{bio.length}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ fontSize: 11, color: "var(--text3)" }}>{bio.charCount || bio.text?.length || 0} chars</span>
-                      <OutputActions text={bio.text} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Social Bio"] === id} feature="Social Bio" id={id} />
+                      <OutputActions text={bio.text} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Social Bio"]?.id === id} feature="Social Bio" id={id} />
                     </div>
                   </div>
                   <p style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap", color: "var(--text)" }}>{bio.text}</p>
@@ -143,24 +143,59 @@ function SocialBioTool({ brandProfile, onOutput, favorites, onFavorite, selected
 // ─── Email Builder ─────────────────────────────────────────────────────────────
 function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect, saveToolOutput, getToolOutputs }) {
   const [type, setType] = useState("Welcome");
-  const [rounds, setRounds] = useState(() => getToolOutputs ? getToolOutputs("email-builder") : []);
+  const [rounds, setRounds] = useState(() => {
+    if (!getToolOutputs) return [];
+    const saved = getToolOutputs("email-builder");
+    // toolOutputs stores array of items per key — ensure we always have an array
+    return Array.isArray(saved) ? saved : saved ? [saved] : [];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const generate = async (spec = "") => {
-    if (!brandProfile) { setError("Please complete your brand profile first"); return; }
+    if (!brandProfile) { setError("Please complete your brand profile first."); return; }
     setLoading(true); setError(null);
     try {
       const result = await callAIJSON(
-        "You are an email marketing expert. Return JSON: {subject: string, preheader: string, body: string}. Body should be well-structured email copy.",
-        `Brand: ${JSON.stringify(brandProfile)}. Email type: ${type}. ${spec || "Write a compelling email."}`
+        `You are an email marketing expert. You MUST return ONLY a raw JSON object with exactly these three fields:
+{
+  "subject": "the email subject line here",
+  "preheader": "short preview text here",
+  "body": "full email body text here"
+}
+No markdown, no code blocks, no explanation. Just the JSON object.`,
+        `Brand profile: ${JSON.stringify(brandProfile)}. Write a ${type} email. ${spec || ""}`
       );
-      if (result.subject) {
-        const newRound = { ...result, spec, round: rounds.length + 1 };
-        setRounds(prev => { const updated = [...prev, newRound]; if (saveToolOutput) saveToolOutput("email-builder", newRound); return updated; });
-        onOutput("Email Template", result.subject);
-      } else { setError("Failed to generate email. Please try again."); }
-    } catch { setError("Connection error. Please try again."); }
+
+      // Robustly extract subject/preheader/body wherever they may be nested
+      const email = result.subject ? result
+        : result.email?.subject ? result.email
+        : result.data?.subject ? result.data
+        : null;
+
+      if (email?.subject) {
+        setRounds(prev => {
+          const newRound = {
+            subject:   email.subject,
+            preheader: email.preheader || "",
+            body:      email.body || "",
+            type,
+            spec,
+            round: prev.length + 1,
+          };
+          const updated = [...prev, newRound];
+          if (saveToolOutput) saveToolOutput("email-builder", newRound);
+          return updated;
+        });
+        onOutput("Email Template", email.subject);
+      } else {
+        setError("AI returned unexpected format. Please try again.");
+        console.error("Email AI result:", JSON.stringify(result));
+      }
+    } catch (e) {
+      setError("Connection error — is the server running on port 3001?");
+      console.error("Email error:", e);
+    }
     setLoading(false);
   };
 
@@ -182,10 +217,10 @@ function EmailBuilderTool({ brandProfile, onOutput, selectedOutputs, onSelect, s
       {loading && <SkeletonCard lines={8} />}
       {rounds.map((round, ri) => (
         <div key={ri} style={{ marginBottom: 24 }}>
-          <div className="round-label">Round {round.round} · {type}</div>
+          <div className="round-label">Round {round.round} · {round.type || type}</div>
           <div className="card output-card" style={{ padding: "18px 20px" }}>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-              <OutputActions text={`Subject: ${round.subject}\n\n${round.body}`} onSelect={onSelect} selected={selectedOutputs["Email Templates"] === `email-${ri}`} feature="Email Templates" id={`email-${ri}`} />
+              <OutputActions text={`Subject: ${round.subject}\n\n${round.body}`} onSelect={onSelect} selected={selectedOutputs["Email Templates"]?.id === `email-${ri}`} feature="Email Templates" id={`email-${ri}`} />
             </div>
             <div style={{ padding: "12px 16px", background: "var(--bg2)", borderRadius: 10, marginBottom: 14, border: "1px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 4, fontWeight: 700, letterSpacing: "0.05em" }}>SUBJECT LINE</div>
@@ -250,7 +285,7 @@ function ContentCalendarTool({ brandProfile, onOutput, selectedOutputs, onSelect
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}</div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-            <OutputActions text={`Content Calendar\n\n${round.calendar.map(row => `${row.day}: ${row.idea} (${row.platform})`).join('\n')}`} onSelect={onSelect} selected={selectedOutputs["Content Calendar"] === `calendar-${ri}`} feature="Content Calendar" id={`calendar-${ri}`} />
+            <OutputActions text={`Content Calendar\n\n${round.calendar.map(row => `${row.day}: ${row.idea} (${row.platform})`).join('\n')}`} onSelect={onSelect} selected={selectedOutputs["Content Calendar"]?.id === `calendar-${ri}`} feature="Content Calendar" id={`calendar-${ri}`} />
           </div>
           <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--border)" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { callAIJSON } from "../utils/api";
-import { generateLogoImage } from "../utils/imageProviders";
+import { generateLogoImage, buildLogoPrompt } from "../utils/imageProviders";
 import { SkeletonCard, OutputActions, GenerateMorePanel, ToolSection } from "./UI";
 import Icon from "./Icon";
 import { PageShell } from "./PageShell";
@@ -182,12 +182,28 @@ function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, selecte
     setLoading(false);
   };
 
+  const selectedName = selectedOutputs?.["Brand Names"]?.text;
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>✨ Brand Name Generator</h2>
-        <p style={{ color: "var(--text2)", fontSize: 14 }}>AI-powered names tailored to your brand profile.</p>
+        <p style={{ color: "var(--text2)", fontSize: 14 }}>AI-powered names tailored to your brand profile. Hit ✓ to select one as your official brand name.</p>
       </div>
+      {selectedName && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12, padding: "14px 18px",
+          background: "linear-gradient(135deg, rgba(0,201,180,0.1), rgba(124,77,255,0.07))",
+          border: "1.5px solid rgba(0,201,180,0.35)", borderRadius: 14, marginBottom: 20,
+        }}>
+          <span style={{ fontSize: 22 }}>✅</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--teal)", textTransform: "uppercase", letterSpacing: "0.8px" }}>Selected Brand Name</div>
+            <div style={{ fontFamily: "Fredoka One", fontSize: 22, color: "var(--text)", lineHeight: 1.2 }}>{selectedName}</div>
+            <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 2 }}>This name will be used in logo generation and mockups</div>
+          </div>
+        </div>
+      )}
       {rounds.length === 0 && !loading && (
         <button className="btn-primary" onClick={() => generate()}>Generate Names</button>
       )}
@@ -203,7 +219,7 @@ function BrandNamesTool({ brandProfile, onOutput, favorites, onFavorite, selecte
                 <div key={i} className="card output-card" style={{ padding: "16px 18px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                     <div style={{ fontFamily: "Fredoka One", fontSize: 20, color: "var(--teal)" }}>{n.name}</div>
-                    <OutputActions text={n.name} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Brand Names"] === id} feature="Brand Names" id={id} />
+                    <OutputActions text={n.name} starred={favorites.includes(id)} onStar={() => onFavorite(id)} onSelect={onSelect} selected={selectedOutputs["Brand Names"]?.id === id} feature="Brand Names" id={id} />
                   </div>
                   <p style={{ color: "var(--text2)", fontSize: 13, lineHeight: 1.6 }}>{n.reason}</p>
                 </div>
@@ -281,7 +297,7 @@ function ColorPaletteTool({ brandProfile, onOutput, selectedOutputs, onSelect })
         <div key={ri} style={{ marginBottom: 24 }}>
           <div className="round-label">Round {round.round}</div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-            <OutputActions text={`Color Palette: ${round.palette.map(c => `${c.name} (${c.hex}) - ${c.role}`).join(', ')}`} onSelect={onSelect} selected={selectedOutputs["Color Palette"] === `palette-${ri}`} feature="Color Palette" id={`palette-${ri}`} />
+            <OutputActions text={`Color Palette: ${round.palette.map(c => `${c.name} (${c.hex}) - ${c.role}`).join(', ')}`} onSelect={onSelect} selected={selectedOutputs["Color Palette"]?.id === `palette-${ri}`} feature="Color Palette" id={`palette-${ri}`} />
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {round.palette.map((c, i) => (
@@ -374,7 +390,7 @@ function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
               <div key={i} className="card" style={{ padding: "20px 22px" }}>
                 <link href={`https://fonts.googleapis.com/css2?family=${pair.heading?.replace(/ /g,"+")}:wght@700&family=${pair.body?.replace(/ /g,"+")}:wght@400;500&display=swap`} rel="stylesheet" />
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-                  <OutputActions text={`Font Pairing: ${pair.heading} + ${pair.body} - ${pair.reason}`} onSelect={onSelect} selected={selectedOutputs["Font Pairing"] === `font-${ri}-${i}`} feature="Font Pairing" id={`font-${ri}-${i}`} />
+                  <OutputActions text={`Font Pairing: ${pair.heading} + ${pair.body} - ${pair.reason}`} onSelect={onSelect} selected={selectedOutputs["Font Pairing"]?.id === `font-${ri}-${i}`} feature="Font Pairing" id={`font-${ri}-${i}`} />
                 </div>
                 <div style={{ fontFamily: `'${pair.heading}', serif`, fontSize: 30, fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>The quick brown fox</div>
                 <div style={{ fontFamily: `'${pair.body}', sans-serif`, fontSize: 15, color: "var(--text2)", lineHeight: 1.7, marginBottom: 14 }}>
@@ -406,43 +422,54 @@ function FontPairingTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
 
 // ─── Logo Creator ──────────────────────────────────────────────────────────────
 function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) {
-  const [rounds, setRounds] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [rounds, setRounds]       = useState([]);
+  const [loading, setLoading]     = useState(false);
   const [loadingIdx, setLoadingIdx] = useState(-1);
-  const [error, setError] = useState("");
+  const [error, setError]         = useState("");
   const [styleNotes, setStyleNotes] = useState("");
   const [colorPref, setColorPref] = useState("");
-  const [avoid, setAvoid] = useState("");
+  const [avoid, setAvoid]         = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [previewLogo, setPreviewLogo] = useState(null);
 
+  // ── Resolve brand name from selected output (must be before buildPrompts) ──
+  const selectedBrandName = selectedOutputs?.["Brand Names"]?.text
+    || brandProfile?.brandName
+    || "";
+
+  // Build 4 style-specific prompts using the focused buildLogoPrompt helper
   const buildPrompts = (spec = "") => {
-    const industry = brandProfile?.industry || "business";
-    const aesthetic = brandProfile?.aesthetic || "modern";
-    const colorMood = brandProfile?.colorMood || "cool";
-    const voice = brandProfile?.voice || "professional";
-    const extras = [styleNotes && `Style notes: ${styleNotes}`, colorPref && `Color preference: ${colorPref}`, avoid && `Avoid: ${avoid}`, spec].filter(Boolean).join(". ");
-    const base = `professional logo design for ${industry} brand, ${aesthetic} aesthetic, ${colorMood} color palette, ${voice} feel, ${extras}, clean white background, vector style, isolated logo mark`;
-    return [
-      { style: "Minimal Icon", prompt: `${base}, minimal geometric icon logo, simple bold symbol, negative space, flat design, single icon mark` },
-      { style: "Wordmark", prompt: `${base}, wordmark logo, elegant custom typography, lettering design, typographic logo, text based logo, creative font` },
-      { style: "Badge / Emblem", prompt: `${base}, emblem badge logo, circular seal design, symmetrical, detailed crest, premium feel, enclosed design` },
-      { style: "Abstract Mark", prompt: `${base}, abstract logo mark, creative fluid shapes, modern abstract symbol, gradient colors, dynamic form, innovative design` },
-    ];
+    const name     = selectedBrandName;
+    const industry = brandProfile?.industry        || "brand";
+    const colorMood= (colorPref || brandProfile?.colorMood) || "";
+    const aesthetic= brandProfile?.designAesthetic || "";
+
+    const STYLES = ["Minimal Icon", "Wordmark", "Badge / Emblem", "Abstract Mark"];
+    return STYLES.map(style => ({
+      style,
+      prompt: buildLogoPrompt(name, industry, colorMood, aesthetic, style)
+        + (styleNotes ? `, ${styleNotes}` : "")
+        + (avoid      ? `, avoid ${avoid}` : "")
+        + (spec       ? `, ${spec}` : ""),
+    }));
   };
 
   const generate = async (spec = "") => {
     setLoading(true); setError(""); setStatusMsg(""); setPreviewLogo(null);
     const prompts = buildPrompts(spec);
-    const logos = [];
+    const logos   = [];
     try {
       for (let i = 0; i < prompts.length; i++) {
         setLoadingIdx(i);
-        setStatusMsg(`Generating ${prompts[i].style}…`);
-        const imageUrl = await generateLogoImage(prompts[i].prompt, (msg) => setStatusMsg(`[${i+1}/4] ${prompts[i].style}: ${msg}`), prompts[i].style);
+        setStatusMsg(`[${i+1}/4] Generating ${prompts[i].style}…`);
+        const imageUrl = await generateLogoImage(
+          prompts[i].prompt,
+          (msg) => setStatusMsg(`[${i+1}/4] ${msg}`),
+          prompts[i].style,
+          selectedBrandName,
+        );
         logos.push({ style: prompts[i].style, imageUrl, prompt: prompts[i].prompt });
-        // Immediately show first logo as preview
-        if (i === 0) setPreviewLogo({ url: imageUrl, brandName: brandProfile?.name || brandProfile?.industry || "Brand" });
+        if (i === 0) setPreviewLogo({ url: imageUrl, brandName: selectedBrandName || brandProfile?.industry || "Brand" });
         setStatusMsg(`✓ ${prompts[i].style} done`);
       }
       setRounds(r => [...r, { logos, spec, round: r.length + 1 }]);
@@ -471,6 +498,23 @@ function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
         <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>🎯 Logo Creator</h2>
         <p style={{ color: "var(--text2)", fontSize: 14 }}>Real AI-generated logos with instant mockup previews.</p>
       </div>
+
+      {selectedBrandName ? (
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", background:"rgba(124,77,255,0.07)", border:"1.5px solid rgba(124,77,255,0.2)", borderRadius:12, marginBottom:20 }}>
+          <span style={{ fontSize:20 }}>🏷️</span>
+          <div>
+            <div style={{ fontSize:11, fontWeight:800, color:"var(--violet)", textTransform:"uppercase", letterSpacing:"0.8px" }}>Generating logos for</div>
+            <div style={{ fontFamily:"Fredoka One", fontSize:20, color:"var(--text)" }}>{selectedBrandName}</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background:"rgba(255,179,0,0.06)", border:"1.5px solid rgba(255,179,0,0.22)", borderRadius:12, marginBottom:20 }}>
+          <span style={{ fontSize:16 }}>💡</span>
+          <div style={{ fontSize:13, color:"#b8860b", fontWeight:600 }}>
+            Tip: Go to <strong>Brand Names</strong> tab, generate names, then hit ✓ on one — it will appear in your logos automatically.
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, maxWidth: 520 }}>
         <div>
@@ -512,10 +556,16 @@ function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
       )}
 
       {error && (
-        <div style={{ padding: "14px 16px", background: "rgba(255,107,107,0.06)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 12, marginBottom: 16 }}>
-          <span style={{ color: "#FF6B6B", fontWeight: 600, fontSize: 14 }}>⚠ Generation failed — </span>
-          <button className="btn-ghost btn-sm" onClick={() => generate()}>Retry</button>
-          <div style={{ fontSize: 11, color: "rgba(255,107,107,0.7)", marginTop: 6, fontFamily: "monospace" }}>{error}</div>
+        <div style={{ padding: "16px 18px", background: "rgba(255,107,107,0.06)", border: "1px solid rgba(255,107,107,0.3)", borderRadius: 14, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ color: "#FF6B6B", fontWeight: 700, fontSize: 14 }}>⚠ Generation failed</span>
+            <button className="btn-ghost btn-sm" onClick={() => generate()}>🔄 Retry</button>
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,107,107,0.85)", fontFamily: "monospace", background: "rgba(255,107,107,0.05)", padding: "8px 10px", borderRadius: 8, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{error}</div>
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--text2)", lineHeight: 1.6 }}>
+            💡 <strong>Fix:</strong> Check that your <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 5px", borderRadius: 4 }}>.env</code> file has <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 5px", borderRadius: 4 }}>GEMINI_API_KEY</code> and <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 5px", borderRadius: 4 }}>STABILITY_API_KEY</code> set, then restart the server.
+            {" "}Or visit <a href="http://localhost:3001/api/debug-keys" target="_blank" rel="noreferrer" style={{ color: "var(--violet)" }}>localhost:3001/api/debug-keys</a> to verify keys are loaded.
+          </div>
         </div>
       )}
 
@@ -525,7 +575,7 @@ function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             {round.logos.map((logo, i) => (
               <div key={i} className="card" style={{ padding: 0, overflow: "hidden", cursor: "pointer" }}
-                onClick={() => setPreviewLogo({ url: logo.imageUrl, brandName: brandProfile?.name || brandProfile?.industry || "Brand" })}>
+                onClick={() => setPreviewLogo({ url: logo.imageUrl, brandName: selectedBrandName || brandProfile?.industry || "Brand" })}>
                 <div style={{ background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 180, position: "relative" }}>
                   <img src={logo.imageUrl} alt={logo.style} style={{ width: "100%", height: 180, objectFit: "contain", display: "block" }} />
                   <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 8px", background: "rgba(0,0,0,0.6)", borderRadius: 6, fontSize: 10, color: "#fff", fontWeight: 700 }}>Click to preview</div>
@@ -536,7 +586,7 @@ function LogoCreatorTool({ brandProfile, onOutput, selectedOutputs, onSelect }) 
                     <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>512 × 512 · PNG</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <OutputActions text={`Logo: ${logo.style}`} onSelect={onSelect} selected={selectedOutputs["Logo Creator"] === `logo-${ri}-${i}`} feature="Logo Creator" id={`logo-${ri}-${i}`} />
+                    <OutputActions text={`Logo: ${logo.style}`} onSelect={onSelect} selected={selectedOutputs["Logo Creator"]?.id === `logo-${ri}-${i}`} feature="Logo Creator" id={`logo-${ri}-${i}`} />
                     <button className="action-btn" title="Download PNG" onClick={e => { e.stopPropagation(); downloadImage(logo.imageUrl, logo.style); }}>
                       <Icon name="download" size={13} />
                     </button>
