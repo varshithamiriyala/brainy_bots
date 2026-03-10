@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "build/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/chat",
+      "dest": "/api/chat.js"
+    },
+    {
+      "src": "/api/gemini-image",
+      "dest": "/api/gemini-image.js"
+    },
+    {
+      "src": "/api/stability-image",
+      "dest": "/api/stability-image.js"
+    },
+    {
+      "src": "/api/debug-keys",
+      "dest": "/api/debug-keys.js"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/build/$1"
+    }
+  ]
+}
+
