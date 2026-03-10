@@ -2,7 +2,6 @@
   "name": "brandcraft",
   "version": "1.0.0",
   "private": true,
-  "proxy": "http://localhost:3001",
   "dependencies": {
     "concurrently": "^8.2.2",
     "cors": "^2.8.5",
@@ -19,12 +18,10 @@
   },
   "scripts": {
     "start": "concurrently \"node server.js\" \"react-scripts start\"",
+    "build": "react-scripts build",
     "server": "node server.js",
     "client": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "deploy": "npm run build && NODE_ENV=production node server.js",
-    "prod": "NODE_ENV=production node server.js"
+    "test": "react-scripts test"
   },
   "eslintConfig": {
     "extends": [
@@ -44,4 +41,3 @@
     ]
   }
 }
-
