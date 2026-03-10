@@ -154,6 +154,16 @@ app.post("/api/stability-image", async (req, res) => {
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`✅ BrandCraft proxy running on http://localhost:${PORT}`);
+  console.log(`   Groq key:     ${GROQ_KEY     ? "✓ set" : "✗ missing — add GROQ_API_KEY to .env"}`);
   console.log(`   Gemini key:    ${GEMINI_KEY    ? "✓ set" : "✗ missing — add GEMINI_API_KEY to .env"}`);
   console.log(`   Stability key: ${STABILITY_KEY ? "✓ set" : "✗ missing — add STABILITY_API_KEY to .env"}`);
+});
+
+// Debug endpoint to check API keys
+app.get("/api/debug-keys", (req, res) => {
+  res.json({
+    groq: GROQ_KEY ? "✓ set" : "✗ missing",
+    gemini: GEMINI_KEY ? "✓ set" : "✗ missing",
+    stability: STABILITY_KEY ? "✓ set" : "✗ missing",
+  });
 });
