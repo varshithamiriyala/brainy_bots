@@ -22,7 +22,9 @@
     "server": "node server.js",
     "client": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test"
+    "test": "react-scripts test",
+    "deploy": "npm run build && NODE_ENV=production node server.js",
+    "prod": "NODE_ENV=production node server.js"
   },
   "eslintConfig": {
     "extends": [
@@ -42,3 +44,4 @@
     ]
   }
 }
+

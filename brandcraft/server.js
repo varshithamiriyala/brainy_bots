@@ -1,24 +1,31 @@
 const express = require("express");
-const cors    = require("cors");
-const fetch   = require("node-fetch");
+const cors = require("cors");
+const fetch = require("node-fetch");
 const FormData = require("form-data");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-const GROQ_KEY      = process.env.GROQ_API_KEY;
-const GEMINI_KEY    = process.env.GEMINI_API_KEY;
+const GROQ_KEY = process.env.GROQ_API_KEY;
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const STABILITY_KEY = process.env.STABILITY_API_KEY;
+const isProduction = process.env.NODE_ENV === "production";
+
+// Serve static files in production
+if (isProduction) {
+  app.use(express.static(path.join(__dirname, "build")));
+}
 
 // ── Groq chat proxy ──────────────────────────────────────────────────────────
 app.post("/api/chat", async (req, res) => {
   try {
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method:  "POST",
+      method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_KEY}` },
-      body:    JSON.stringify(req.body),
+      body: JSON.stringify(req.body),
     });
     if (req.body.stream) {
       res.setHeader("Content-Type", "text/event-stream");
@@ -32,20 +39,16 @@ app.post("/api/chat", async (req, res) => {
 });
 
 // ── Gemini Imagen 3 image generation ────────────────────────────────────────
-// Uses imagen-3.0-generate-002 which is the current production image model
-// POST /api/gemini-image  { prompt: string }
-// Returns { imageBase64: string, mimeType: string }
 app.post("/api/gemini-image", async (req, res) => {
   if (!GEMINI_KEY) return res.status(500).json({ error: "GEMINI_API_KEY not set in .env" });
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
 
   try {
-    // Try Imagen 3 first (best quality, specifically designed for image generation)
     const imagenRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_KEY}`,
       {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           instances: [{ prompt }],
@@ -64,17 +67,16 @@ app.post("/api/gemini-image", async (req, res) => {
     if (imagenRes.ok && imagenData?.predictions?.[0]?.bytesBase64Encoded) {
       return res.json({
         imageBase64: imagenData.predictions[0].bytesBase64Encoded,
-        mimeType:    imagenData.predictions[0].mimeType ?? "image/png",
+        mimeType: imagenData.predictions[0].mimeType ?? "image/png",
       });
     }
 
-    // Fallback to gemini-2.0-flash with image generation modality
-    console.warn("Imagen 3 failed, trying gemini-2.0-flash-preview-image-generation:", JSON.stringify(imagenData).slice(0, 200));
+    console.warn("Imagen 3 failed, trying gemini-2.0-flash-preview-image-generation");
 
     const gemRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_KEY}`,
       {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
@@ -88,7 +90,7 @@ app.post("/api/gemini-image", async (req, res) => {
       return res.status(gemRes.status).json({ error: gemData?.error?.message || "Gemini API error" });
     }
 
-    const parts   = gemData?.candidates?.[0]?.content?.parts ?? [];
+    const parts = gemData?.candidates?.[0]?.content?.parts ?? [];
     const imgPart = parts.find(p => p.inlineData?.data);
     if (!imgPart) {
       return res.status(502).json({
@@ -99,7 +101,7 @@ app.post("/api/gemini-image", async (req, res) => {
 
     return res.json({
       imageBase64: imgPart.inlineData.data,
-      mimeType:    imgPart.inlineData.mimeType ?? "image/png",
+      mimeType: imgPart.inlineData.mimeType ?? "image/png",
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -107,16 +109,12 @@ app.post("/api/gemini-image", async (req, res) => {
 });
 
 // ── Stability AI v2beta Core image generation ────────────────────────────────
-// Uses the newer stable-image/generate/core endpoint (not deprecated v1 SDXL)
-// POST /api/stability-image  { prompt, negative_prompt }
-// Returns { imageBase64: string }
 app.post("/api/stability-image", async (req, res) => {
   if (!STABILITY_KEY) return res.status(500).json({ error: "STABILITY_API_KEY not set in .env" });
   const { prompt, negative_prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
 
   try {
-    // Use multipart/form-data as required by v2beta
     const form = new FormData();
     form.append("prompt", prompt);
     form.append("output_format", "png");
@@ -126,11 +124,11 @@ app.post("/api/stability-image", async (req, res) => {
     const stabRes = await fetch(
       "https://api.stability.ai/v2beta/stable-image/generate/core",
       {
-        method:  "POST",
+        method: "POST",
         headers: {
           ...form.getHeaders(),
           "Authorization": `Bearer ${STABILITY_KEY}`,
-          "Accept":        "image/*",
+          "Accept": "image/*",
         },
         body: form,
       }
@@ -141,22 +139,12 @@ app.post("/api/stability-image", async (req, res) => {
       return res.status(stabRes.status).json({ error: `Stability v2beta error: ${errText.slice(0, 200)}` });
     }
 
-    // v2beta returns raw image bytes, convert to base64
     const imgBuffer = await stabRes.buffer();
     const b64 = imgBuffer.toString("base64");
     return res.json({ imageBase64: b64 });
-
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
-
-const PORT = 3001;
-app.listen(PORT, () => {
-  console.log(`✅ BrandCraft proxy running on http://localhost:${PORT}`);
-  console.log(`   Groq key:     ${GROQ_KEY     ? "✓ set" : "✗ missing — add GROQ_API_KEY to .env"}`);
-  console.log(`   Gemini key:    ${GEMINI_KEY    ? "✓ set" : "✗ missing — add GEMINI_API_KEY to .env"}`);
-  console.log(`   Stability key: ${STABILITY_KEY ? "✓ set" : "✗ missing — add STABILITY_API_KEY to .env"}`);
 });
 
 // Debug endpoint to check API keys
@@ -167,3 +155,19 @@ app.get("/api/debug-keys", (req, res) => {
     stability: STABILITY_KEY ? "✓ set" : "✗ missing",
   });
 });
+
+// Catch-all for SPA routing in production
+if (isProduction) {
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "build", "index.html"));
+  });
+}
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`✅ BrandCraft ${isProduction ? "production" : "development"} server running on http://localhost:${PORT}`);
+  console.log(`   Groq key:     ${GROQ_KEY ? "✓ set" : "✗ missing — add GROQ_API_KEY to .env"}`);
+  console.log(`   Gemini key:    ${GEMINI_KEY ? "✓ set" : "✗ missing — add GEMINI_API_KEY to .env"}`);
+  console.log(`   Stability key: ${STABILITY_KEY ? "✓ set" : "✗ missing — add STABILITY_API_KEY to .env"}`);
+});
+
